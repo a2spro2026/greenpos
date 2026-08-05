@@ -1,0 +1,312 @@
+/* GreenPOS SaaS Onboarding — marketing + forms */
+.ob-body {
+    margin: 0;
+    font-family: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+    color: #0f1c19;
+    background:
+        radial-gradient(ellipse 90% 50% at 0% 0%, rgba(20, 184, 166, 0.12), transparent 50%),
+        radial-gradient(ellipse 70% 40% at 100% 10%, rgba(15, 118, 110, 0.08), transparent 45%),
+        #f7faf9;
+}
+
+.ob-nav {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 1.25rem;
+    backdrop-filter: blur(12px);
+    background: rgba(247, 250, 249, 0.85);
+    border-bottom: 1px solid rgba(15, 28, 25, 0.06);
+}
+
+.ob-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: 800;
+    text-decoration: none;
+    color: inherit;
+}
+
+.ob-brand-mark {
+    display: inline-flex;
+    width: 2rem;
+    height: 2rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.65rem;
+    background: linear-gradient(135deg, #14b8a6, #0f766e);
+    color: #fff;
+    font-size: 0.7rem;
+}
+
+.ob-nav-links {
+    display: none;
+    align-items: center;
+    gap: 1.1rem;
+    font-size: 0.875rem;
+}
+
+.ob-nav-links a {
+    text-decoration: none;
+    color: #334155;
+    font-weight: 600;
+}
+
+.ob-link-muted { color: #64748b !important; }
+
+.ob-nav-toggle {
+    border: 1px solid #d5deda;
+    background: #fff;
+    border-radius: 0.65rem;
+    padding: 0.4rem 0.65rem;
+    cursor: pointer;
+}
+
+.ob-nav-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: #fff;
+    border-bottom: 1px solid #e2e8e5;
+}
+
+.ob-nav-mobile a { text-decoration: none; color: #0f1c19; font-weight: 600; }
+
+@media (min-width: 900px) {
+    .ob-nav-links { display: flex; }
+    .ob-nav-toggle, .ob-nav-mobile { display: none !important; }
+}
+
+.ob-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border: 0;
+    border-radius: 0.85rem;
+    background: #0f766e;
+    color: #fff !important;
+    font-weight: 700;
+    padding: 0.65rem 1.1rem;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+.ob-btn-primary:hover { background: #0d9488; }
+.ob-btn-lg { padding: 0.85rem 1.35rem; font-size: 0.95rem; }
+.ob-btn-block { width: 100%; }
+.ob-btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.85rem;
+    border: 1px solid #cfd8d4;
+    background: transparent;
+    color: #0f1c19;
+    font-weight: 700;
+    padding: 0.65rem 1.1rem;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.ob-hero {
+    display: grid;
+    gap: 2rem;
+    padding: 3rem 1.25rem 2rem;
+    max-width: 1120px;
+    margin: 0 auto;
+}
+@media (min-width: 960px) {
+    .ob-hero { grid-template-columns: 1.1fr 0.9fr; align-items: center; padding-top: 4.5rem; }
+}
+
+.ob-eyebrow {
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #0f766e;
+    margin: 0 0 0.75rem;
+}
+
+.ob-hero h1 {
+    font-size: clamp(2rem, 4vw, 3.1rem);
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    margin: 0;
+}
+
+.ob-lead { margin: 1rem 0 0; color: #475569; font-size: 1.05rem; max-width: 34rem; }
+.ob-hero-cta { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.5rem; }
+.ob-hero-note { margin-top: 1rem; font-size: 0.8rem; color: #64748b; }
+
+.ob-mock {
+    border-radius: 1.25rem;
+    background: linear-gradient(160deg, #0b1f1c, #134e4a);
+    padding: 1rem;
+    box-shadow: 0 30px 60px rgba(15, 28, 25, 0.25);
+    color: #ecfdf8;
+}
+.ob-mock-bar { display: flex; gap: 0.35rem; margin-bottom: 1rem; }
+.ob-mock-bar span { width: 0.55rem; height: 0.55rem; border-radius: 999px; background: rgba(255,255,255,0.25); }
+.ob-mock-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.ob-mock-card {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 0.9rem;
+    padding: 0.9rem;
+}
+.ob-mock-card.tall { grid-column: 1 / -1; }
+.ob-mock-card strong { display: block; font-size: 0.7rem; opacity: 0.7; font-weight: 600; }
+.ob-mock-card em { font-style: normal; font-size: 1.4rem; font-weight: 800; }
+.ob-mock-bars { display: flex; align-items: flex-end; gap: 0.4rem; height: 4rem; margin-top: 0.75rem; }
+.ob-mock-bars i { flex: 1; border-radius: 0.35rem 0.35rem 0 0; background: #2dd4bf; opacity: 0.85; }
+.ob-mock-bars i:nth-child(1) { height: 40%; }
+.ob-mock-bars i:nth-child(2) { height: 70%; }
+.ob-mock-bars i:nth-child(3) { height: 55%; }
+.ob-mock-bars i:nth-child(4) { height: 90%; }
+
+.ob-section { padding: 3.5rem 1.25rem; max-width: 1120px; margin: 0 auto; }
+.ob-section-alt { max-width: none; background: #fff; border-block: 1px solid rgba(15,28,25,0.05); }
+.ob-section-alt > * { max-width: 1120px; margin-left: auto; margin-right: auto; }
+.ob-section h2 { font-size: 1.75rem; letter-spacing: -0.02em; margin: 0; }
+.ob-section-lead { color: #64748b; margin: 0.5rem 0 1.75rem; }
+
+.ob-features {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.ob-feature {
+    background: #fff;
+    border: 1px solid rgba(15,28,25,0.06);
+    border-radius: 1rem;
+    padding: 1.25rem;
+}
+.ob-feature h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+.ob-feature p { margin: 0; color: #64748b; font-size: 0.9rem; }
+
+.ob-pricing {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.ob-price-card {
+    position: relative;
+    background: #f8faf9;
+    border: 1px solid #e2e8e5;
+    border-radius: 1.15rem;
+    padding: 1.35rem;
+    text-align: left;
+}
+.ob-price-card.featured, .ob-price-card.selected {
+    border-color: #0d9488;
+    box-shadow: 0 0 0 2px rgba(13,148,136,0.2);
+    background: #fff;
+}
+.ob-pill {
+    position: absolute;
+    top: 0.85rem;
+    right: 0.85rem;
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    background: #0f766e;
+    color: #fff;
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
+}
+.ob-price { font-size: 1.75rem; margin: 0.5rem 0 1rem; }
+.ob-price span { font-size: 0.85rem; color: #64748b; font-weight: 600; }
+.ob-price-tagline { color: #64748b; font-size: 0.85rem; margin: 0; min-height: 2.4em; }
+.ob-price-card ul { padding-left: 1.1rem; margin: 0 0 1.1rem; color: #475569; font-size: 0.875rem; }
+.ob-pricing-select .ob-price-card { cursor: pointer; width: 100%; font: inherit; }
+
+.ob-quotes {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.ob-quotes blockquote {
+    margin: 0;
+    background: #fff;
+    border-radius: 1rem;
+    border: 1px solid #e2e8e5;
+    padding: 1.25rem;
+}
+.ob-quotes p { margin: 0 0 0.75rem; font-size: 0.95rem; }
+.ob-quotes footer { font-size: 0.8rem; color: #64748b; }
+
+.ob-faq details {
+    background: #f8faf9;
+    border: 1px solid #e2e8e5;
+    border-radius: 0.9rem;
+    padding: 0.9rem 1rem;
+    margin-bottom: 0.6rem;
+}
+.ob-faq summary { font-weight: 700; cursor: pointer; }
+.ob-faq p { margin: 0.5rem 0 0; color: #475569; font-size: 0.9rem; }
+.ob-final-cta { text-align: center; margin-top: 2.5rem; }
+.ob-final-cta h3 { margin: 0 0 1rem; }
+
+.ob-form-shell {
+    min-height: calc(100vh - 8rem);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+.ob-form-card {
+    width: 100%;
+    max-width: 28rem;
+    background: #fff;
+    border: 1px solid #e2e8e5;
+    border-radius: 1.25rem;
+    padding: 1.75rem;
+    box-shadow: 0 20px 50px rgba(15,28,25,0.08);
+}
+.ob-form-card-wide, .ob-form-wide .ob-form-card { max-width: 960px; }
+.ob-form-card h1 { font-size: 1.5rem; margin: 0 0 0.35rem; letter-spacing: -0.02em; }
+.ob-lead-sm { color: #64748b; font-size: 0.9rem; margin: 0 0 1.25rem; }
+.ob-form { display: grid; gap: 0.85rem; }
+.ob-form label { display: grid; gap: 0.35rem; font-size: 0.8rem; font-weight: 700; color: #334155; }
+.ob-form input[type="text"],
+.ob-form input[type="email"],
+.ob-form input[type="tel"],
+.ob-form input[type="password"] {
+    border: 1px solid #d5deda;
+    border-radius: 0.75rem;
+    padding: 0.7rem 0.85rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+.ob-form-row { display: grid; gap: 0.85rem; }
+@media (min-width: 640px) { .ob-form-row { grid-template-columns: 1fr 1fr; } }
+.ob-check { display: flex !important; align-items: flex-start; gap: 0.6rem; font-weight: 500 !important; }
+.ob-check input { margin-top: 0.2rem; }
+.ob-alert {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+.ob-form-footer { text-align: center; font-size: 0.85rem; color: #64748b; margin: 1.25rem 0 0; }
+.ob-form-footer a { color: #0f766e; font-weight: 700; text-decoration: none; }
+.ob-plan-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; margin-top: 1.5rem; }
+
+.ob-footer {
+    padding: 2rem 1.25rem;
+    text-align: center;
+    color: #64748b;
+    font-size: 0.8rem;
+}
+.ob-footer a { color: #0f766e; text-decoration: none; font-weight: 600; }

@@ -1,0 +1,64 @@
+/* CRM Pipeline — Pipedrive / HubSpot inspired */
+.crm-pipeline {
+  display: flex;
+  gap: .85rem;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+  min-height: 70vh;
+  scroll-snap-type: x proximity;
+}
+.crm-column {
+  flex: 0 0 260px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  border-radius: 1rem;
+  border: 1px solid rgba(148,163,184,.2);
+  background: rgba(148,163,184,.06);
+  max-height: 75vh;
+}
+.dark .crm-column { background: rgba(15,23,42,.45); border-color: rgba(148,163,184,.12); }
+.crm-column-head {
+  display: flex; align-items: center; gap: .65rem;
+  padding: .85rem 1rem;
+  border-bottom: 1px solid rgba(148,163,184,.15);
+}
+.crm-column-head h2 { margin: 0; font-size: .8rem; font-weight: 700; }
+.crm-column-head p { margin: 0; font-size: .65rem; opacity: .65; }
+.crm-dot { width: .55rem; height: .55rem; border-radius: 999px; display: inline-block; }
+.crm-column-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: .65rem;
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+  min-height: 120px;
+}
+.crm-column-body.drag-over {
+  outline: 2px dashed rgba(20,184,166,.55);
+  outline-offset: -4px;
+  background: rgba(20,184,166,.06);
+}
+.crm-card {
+  border-radius: .9rem;
+  border: 1px solid rgba(148,163,184,.18);
+  background: #fff;
+  padding: .75rem .8rem;
+  cursor: grab;
+  box-shadow: 0 4px 14px rgba(15,23,42,.04);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.dark .crm-card { background: #0f172a; border-color: rgba(148,163,184,.12); }
+.crm-card:active { cursor: grabbing; }
+.crm-card.dragging { opacity: .45; transform: scale(.98); }
+.crm-card:hover { box-shadow: 0 10px 24px rgba(15,23,42,.1); transform: translateY(-1px); }
+.crm-card-title { display: block; font-size: .8125rem; font-weight: 700; color: inherit; text-decoration: none; }
+.crm-card-title:hover { color: #0d9488; }
+.crm-card-meta { margin: .25rem 0 0; font-size: .7rem; opacity: .65; }
+.crm-card-foot { display: flex; justify-content: space-between; margin-top: .55rem; font-size: .75rem; }
+.crm-card-owner { margin: .35rem 0 0; font-size: .65rem; opacity: .55; }
+
+@media (max-width: 640px) {
+  .crm-column { flex-basis: 85vw; }
+}
