@@ -70,12 +70,12 @@ class SessionController extends Controller
     public function login(Request $request): RedirectResponse
     {
         $credentials = $request->validate([
-            'email' => ['required', 'email'],
+            'email' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string'],
             'remember' => ['nullable', 'boolean'],
         ]);
 
-        $user = User::query()->where('email', $credentials['email'])->first();
+        $user = User::findForLogin($credentials['email']);
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             throw ValidationException::withMessages([

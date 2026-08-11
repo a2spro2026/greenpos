@@ -36,6 +36,13 @@ function resolveDark(mode) {
     return mode === 'dark';
 }
 
+function applySidebarTone(themeMode) {
+    const style = root.dataset.sidebarStyle || 'auto';
+    const dark = style === 'dark' || (style !== 'light' && themeMode === 'dark');
+    root.classList.toggle('gp-sidebar-dark', dark);
+    root.classList.toggle('gp-sidebar-light', !dark);
+}
+
 function applyTheme(mode, { userChoice = false } = {}) {
     const m = mode === 'dark' ? 'dark' : 'light';
     localStorage.setItem(THEME_KEY, m);
@@ -44,6 +51,7 @@ function applyTheme(mode, { userChoice = false } = {}) {
     }
     root.dataset.theme = m;
     root.classList.toggle('dark', resolveDark(m));
+    applySidebarTone(m);
     document.querySelectorAll('[data-theme-icon]').forEach((el) => {
         // Show the icon of the *current* mode (sun = light, moon = dark)
         el.classList.toggle('hidden', el.getAttribute('data-theme-icon') !== m);
@@ -135,10 +143,31 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;');
 }
 
-document.querySelectorAll('[data-gp-flash]').forEach((flash) => {
-    const type = flash.getAttribute('data-gp-flash') || 'info';
-    const msg = flash.textContent?.trim();
-    if (msg) window.gpToast(msg, type);
+function autoHideFlash(el, ttl = 2200) {
+    if (!el || el.dataset.gpFlashBound === '1') return;
+    el.dataset.gpFlashBound = '1';
+    window.setTimeout(() => {
+        el.classList.add('is-leaving');
+        window.setTimeout(() => el.remove(), 280);
+    }, ttl);
+}
+
+const seenFlash = new Set();
+document.querySelectorAll('[data-gp-flash], .gp-flash-success, .gp-flash-info, .gp-flash-warning, .mb-4.border-emerald-200.bg-emerald-50').forEach((flash) => {
+    const type = flash.getAttribute('data-gp-flash')
+        || (flash.classList.contains('gp-flash-error') ? 'error' : null)
+        || (flash.classList.contains('gp-flash-warning') ? 'warning' : null)
+        || (flash.classList.contains('gp-flash-info') ? 'info' : 'success');
+    if (type === 'error') return;
+    if (flash.querySelector('form, input, table, ul.list-disc')) return;
+
+    const key = `${type}:${(flash.textContent || '').trim()}`;
+    if (seenFlash.has(key)) {
+        flash.remove();
+        return;
+    }
+    seenFlash.add(key);
+    autoHideFlash(flash, type === 'success' ? 2200 : 3500);
 });
 
 /* ---------- Sidebar ---------- */
@@ -710,7 +739,7 @@ function applyDashLayout() {
 
     Object.entries(layout.hidden || {}).forEach(([id, hidden]) => {
         const w = board.querySelector(`[data-gp-widget="${id}"]`);
-        if (w) w.classList.toggle('is-widget-hidden', !!hidden);
+        if (w && !w.hasAttribute('data-gp-locked')) w.classList.toggle('is-widget-hidden', !!hidden);
     });
 }
 
@@ -726,6 +755,7 @@ applyDashLayout();
 
 let dragWidget = null;
 document.querySelectorAll('[data-gp-dashboard] [data-gp-widget]').forEach((widget) => {
+    if (widget.hasAttribute('data-gp-locked')) return;
     widget.setAttribute('draggable', 'true');
     widget.addEventListener('dragstart', (e) => {
         if (!document.querySelector('[data-gp-dashboard]')?.classList.contains('is-customizing')) {

@@ -46,6 +46,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/companies/{company}/reactivate', [CompanyController::class, 'reactivate'])->name('companies.reactivate');
         Route::delete('/companies/{company}', [CompanyController::class, 'destroy'])->name('companies.destroy');
         Route::post('/companies/{company}/impersonate', [CompanyController::class, 'impersonate'])->name('companies.impersonate');
+        Route::put('/companies/{company}/modules', [CompanyController::class, 'updateModules'])->name('companies.modules.update');
 
         Route::get('/stores', [StoreController::class, 'index'])->name('stores.index');
         Route::get('/plans', [PlanController::class, 'index'])->name('plans.index');

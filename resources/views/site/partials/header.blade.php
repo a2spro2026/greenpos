@@ -11,8 +11,8 @@
 <header class="site-header" data-site-header>
     <div class="site-container site-header-inner">
         <a href="{{ route('site.home') }}" class="site-brand" aria-label="GreenPOS — Accueil">
-            <span class="site-brand-mark">GP</span>
-            GreenPOS
+            <span class="site-brand-mark" aria-hidden="true"><span>GP</span></span>
+            <span class="site-brand-name">GreenPOS</span>
         </a>
 
         <nav class="site-nav" aria-label="Navigation principale">

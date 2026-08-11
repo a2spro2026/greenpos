@@ -1,15 +1,14 @@
 @extends('layouts.site')
 
-@section('title', 'Pilotez votre entreprise')
-@section('meta_description', 'GreenPOS — plateforme SaaS tout-en-un pour gérer commerce, stock, ventes, équipes et croissance.')
+@section('title', 'GreenPOS, la solution qui GERE')
+@section('meta_description', 'GreenPOS, la solution qui GERE — plateforme SaaS tout-en-un pour le commerce, le stock, les ventes et les équipes.')
 
 @section('content')
 <section class="site-hero" aria-label="Hero">
     <div class="site-hero-bg" aria-hidden="true"></div>
     <div class="site-hero-inner">
         <div>
-            <p class="site-hero-brand"><span>GreenPOS</span></p>
-            <h1>Pilotez votre entreprise avec GreenPOS.</h1>
+            <h1 class="site-hero-title">GreenPOS, la solution qui <span>GERE</span></h1>
             <p class="site-hero-lead">Une plateforme SaaS tout-en-un pour gérer votre commerce, votre stock, vos ventes, vos équipes et votre croissance.</p>
             <div class="site-hero-cta">
                 <a href="{{ route('register-company') }}" class="site-btn site-btn-lime">Essai gratuit</a>
@@ -17,25 +16,22 @@
                 <a href="{{ route('site.contact', ['demo' => 1]) }}" class="site-btn site-btn-ghost" style="border-color:rgba(255,255,255,.28);color:#fff">Voir une démonstration</a>
             </div>
         </div>
-        <div class="site-hero-visual" aria-hidden="true">
-            <div class="site-ui-mock">
-                <div class="site-ui-top"><i></i><i></i><i></i></div>
-                <div class="site-ui-grid">
-                    <div class="site-ui-panel">
-                        <strong>Ventes du jour</strong>
-                        <div class="site-ui-bars">
-                            <span></span><span></span><span></span><span></span>
+        <div class="site-hero-visual">
+            <div class="site-laptop" role="img" aria-label="Aperçu GreenPOS sur ordinateur portable">
+                <div class="site-laptop-glow" aria-hidden="true"></div>
+                <div class="site-laptop-lid">
+                    <div class="site-laptop-bezel">
+                        <span class="site-laptop-cam" aria-hidden="true"></span>
+                        <div class="site-laptop-screen">
+                            <img src="{{ asset('images/site/hero-dashboard.png') }}" alt="Tableau de bord GreenPOS — ventes du jour, POS, stock, CRM et multi-boutiques">
+                            <span class="site-laptop-shine" aria-hidden="true"></span>
                         </div>
                     </div>
-                    <div class="site-ui-panel">
-                        <strong>Pilotage</strong>
-                        <div class="site-ui-kpis">
-                            <div class="site-ui-kpi"><b>POS</b><small>Caisse ouverte</small></div>
-                            <div class="site-ui-kpi"><b>Stock</b><small>Alertes live</small></div>
-                            <div class="site-ui-kpi"><b>CRM</b><small>Pipeline</small></div>
-                            <div class="site-ui-kpi"><b>Multi</b><small>Boutiques</small></div>
-                        </div>
-                    </div>
+                </div>
+                <div class="site-laptop-base" aria-hidden="true">
+                    <div class="site-laptop-keys"></div>
+                    <div class="site-laptop-notch"></div>
+                    <div class="site-laptop-front"></div>
                 </div>
             </div>
         </div>

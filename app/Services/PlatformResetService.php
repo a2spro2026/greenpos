@@ -67,11 +67,15 @@ class PlatformResetService
                 }
             }
 
-            // Keep only Super Admin
+            // Keep only Super Admin (force-delete: users use SoftDeletes + unique email)
             if (Schema::hasTable('users')) {
-                User::query()
-                    ->where('email', '!=', PlatformBootstrapService::SUPER_ADMIN_EMAIL)
-                    ->delete();
+                User::withTrashed()
+                    ->where(function ($q) {
+                        $q->where('email', '!=', PlatformBootstrapService::SUPER_ADMIN_EMAIL)
+                            ->orWhereNull('email');
+                    })
+                    ->where('is_platform_admin', false)
+                    ->forceDelete();
             }
         } finally {
             if ($driver === 'sqlite') {

@@ -27,7 +27,7 @@ class Company extends Model
 
     protected $fillable = [
         'name', 'legal_name', 'logo_path', 'activity', 'currency', 'timezone', 'locale',
-        'status', 'archived_at',
+        'status', 'modules_setup_at', 'archived_at',
         'email', 'phone', 'website', 'address', 'city', 'region', 'postal_code', 'country',
         'ice', 'if_number', 'rc', 'patente', 'tax_id', 'cnss',
     ];
@@ -36,6 +36,7 @@ class Company extends Model
     {
         return [
             'archived_at' => 'datetime',
+            'modules_setup_at' => 'datetime',
         ];
     }
 
@@ -123,5 +124,14 @@ class Company extends Model
     public function isOperational(): bool
     {
         return $this->status === 'active';
+    }
+
+    public function needsModuleSetup(): bool
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasColumn('companies', 'modules_setup_at')) {
+            return false;
+        }
+
+        return $this->modules_setup_at === null;
     }
 }

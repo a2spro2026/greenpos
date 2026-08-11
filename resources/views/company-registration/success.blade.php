@@ -12,9 +12,16 @@
             Vous recevrez un email dès qu’elle sera validée.
         </div>
         @if($reference)
-            <p style="font-family:ui-monospace,monospace;font-weight:750;color:var(--site-green);font-size:1.05rem;letter-spacing:.03em">
-                {{ $reference }}
-            </p>
+            <div class="reg-ref" role="group" aria-label="Numéro de demande">
+                <div class="reg-ref-pointer" aria-hidden="true">
+                    <span>Votre numéro</span>
+                    <svg viewBox="0 0 72 44" fill="none">
+                        <path d="M8 8c18 2 38 6 46 22" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+                        <path d="M46 20l10 12-14 1" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <p class="reg-ref-code">{{ $reference }}</p>
+            </div>
             <p style="color:var(--site-muted);margin-bottom:1.5rem">Conservez ce numéro pour suivre votre demande.</p>
             <div class="site-cta-actions" style="justify-content:center">
                 <a href="{{ route('register-company.track.show', $reference) }}" class="site-btn site-btn-primary">Suivre ma demande</a>

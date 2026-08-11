@@ -99,7 +99,12 @@ class PlatformAdminService
         $this->saas->ensurePlans();
         $plan = SaasPlan::query()->findOrFail($data['saas_plan_id']);
 
-        if (User::query()->where('email', $data['email'])->exists()) {
+        $email = strtolower(trim((string) $data['email']));
+        $data['email'] = $email;
+
+        User::onlyTrashed()->where('email', $email)->forceDelete();
+
+        if (User::query()->where('email', $email)->exists()) {
             throw ValidationException::withMessages([
                 'email' => 'Un utilisateur existe déjà avec cet e-mail.',
             ]);
@@ -209,7 +214,7 @@ class PlatformAdminService
                 'expires_at' => $sub->ends_at,
             ]);
 
-            $this->modules->syncCompanyFromPlan($company, $plan);
+            $this->modules->syncCompanyFromPlan($company, $plan, false);
 
             $this->saas->logAudit(
                 'tenant',
@@ -258,7 +263,6 @@ class PlatformAdminService
             $sub = $tenant->currentSubscription;
             if ($plan && $sub) {
                 $sub->update(['saas_plan_id' => $plan->id]);
-                $this->modules->syncCompanyFromPlan($company, $plan);
             }
         }
 

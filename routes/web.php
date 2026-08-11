@@ -334,6 +334,8 @@ Route::middleware(['workspace', 'audit'])->group(function () {
 
     // Paramètres généraux
     Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
+    Route::get('/setup/modules', [ModuleManagerController::class, 'setup'])->name('modules.setup');
+    Route::post('/setup/modules', [ModuleManagerController::class, 'storeSetup'])->name('modules.setup.store');
     Route::get('/modules', [ModuleManagerController::class, 'index'])->name('modules.index');
     Route::get('/modules/{module}', [ModuleManagerController::class, 'show'])->name('modules.show');
     Route::post('/modules/{module}/toggle', [ModuleManagerController::class, 'toggle'])->name('modules.toggle');

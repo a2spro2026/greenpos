@@ -27,10 +27,6 @@
 @endsection
 
 @section('content')
-    @if(session('success'))
-        <div class="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{{ session('success') }}</div>
-    @endif
-
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="space-y-6 lg:col-span-2">
             <section class="gp-card">

@@ -204,7 +204,7 @@ class OnboardingService
 
             Workspace::set($company, $store);
 
-            app(\App\Services\ModuleManagerService::class)->syncCompanyFromPlan($company, $plan);
+            app(\App\Services\ModuleManagerService::class)->syncCompanyFromPlan($company, $plan, false);
 
             $onboarding->update([
                 'company_id' => $company->id,

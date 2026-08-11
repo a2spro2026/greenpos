@@ -205,4 +205,18 @@ class User extends Authenticatable
     {
         return $this->status === 'active';
     }
+
+    public static function findForLogin(string $login): ?self
+    {
+        $login = trim($login);
+        if ($login === '') {
+            return null;
+        }
+
+        return static::query()
+            ->where(function (Builder $q) use ($login) {
+                $q->where('email', $login)->orWhere('username', $login);
+            })
+            ->first();
+    }
 }

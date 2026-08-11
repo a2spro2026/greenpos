@@ -52,12 +52,12 @@
         <form method="POST" action="{{ route('admin.login.attempt') }}" class="mt-6 space-y-4">
             @csrf
             <div>
-                <label class="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500">E-mail</label>
-                <input type="email" name="email" value="{{ old('email', 'yahyabilal@greenpos.com') }}" required autofocus class="pa-input" placeholder="yahyabilal@greenpos.com">
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500">Identifiant</label>
+                <input type="text" name="email" value="{{ old('email', \App\Services\PlatformBootstrapService::SUPER_ADMIN_USERNAME) }}" required autofocus autocomplete="username" class="pa-input" placeholder="bilal">
             </div>
             <div>
                 <label class="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500">Mot de passe</label>
-                <input type="password" name="password" required class="pa-input" placeholder="123456">
+                <input type="password" name="password" value="{{ \App\Services\PlatformBootstrapService::SUPER_ADMIN_PASSWORD }}" required class="pa-input" placeholder="0661755048" autocomplete="current-password">
             </div>
             <label class="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
                 <input type="checkbox" name="remember" value="1" class="rounded border-zinc-300 dark:border-zinc-600">
@@ -65,7 +65,7 @@
             </label>
             <button type="submit" class="pa-btn pa-btn-primary w-full py-3">Accéder au Super Admin</button>
         </form>
-        <p class="mt-6 text-center text-xs text-zinc-500">yahyabilal@greenpos.com</p>
+        <p class="mt-6 text-center text-xs text-zinc-500">{{ \App\Services\PlatformBootstrapService::SUPER_ADMIN_USERNAME }}</p>
     </div>
 </div>
 </body>

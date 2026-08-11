@@ -24,57 +24,53 @@
 @section('content')
     @include('onboarding._checklist')
     <div data-gp-dashboard class="space-y-6">
-        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <article class="gp-kpi" data-gp-widget="revenue">
-                <div class="gp-widget-toolbar"><button type="button" class="text-[11px] text-gp-muted hover:text-rose-500" data-gp-widget-hide="revenue">Masquer</button></div>
-                <div class="flex items-start justify-between gap-3">
-                    <div class="gp-kpi-icon">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-10V5m0 14v-1"/></svg>
-                    </div>
-                    <span class="gp-badge bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">Aujourd'hui</span>
+        <section class="gp-kpi-grid gp-kpi-sticky">
+            <article class="gp-kpi gp-kpi--sales" data-gp-widget="revenue" data-gp-locked>
+                <div class="gp-kpi-head">
+                    <span class="gp-kpi-icon" aria-hidden="true">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-10V5m0 14v-1"/></svg>
+                    </span>
+                    <span class="gp-kpi-chip">Aujourd’hui</span>
                 </div>
-                <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-gp-muted">Chiffre d’affaires <x-gp-tip text="Total des ventes du jour pour la boutique active." /></p>
-                <p class="mt-1 text-3xl font-bold tracking-tight text-gp-text dark:text-white">{{ number_format($stats['revenue_today'], 2, ',', ' ') }} <span class="text-base font-semibold text-gp-muted">{{ $stats['currency'] }}</span></p>
-                <p class="mt-2 text-xs text-gp-muted">Performance du jour · boutique active</p>
+                <p class="gp-kpi-label">Chiffre d’affaires</p>
+                <p class="gp-kpi-value">{{ number_format($stats['revenue_today'], 2, ',', ' ') }} <small>{{ $stats['currency'] }}</small></p>
+                <p class="gp-kpi-hint">Performance du jour · boutique active</p>
             </article>
 
-            <article class="gp-kpi" data-gp-widget="sales">
-                <div class="gp-widget-toolbar"><button type="button" class="text-[11px] text-gp-muted hover:text-rose-500" data-gp-widget-hide="sales">Masquer</button></div>
-                <div class="flex items-start justify-between gap-3">
-                    <div class="gp-kpi-icon">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/></svg>
-                    </div>
-                    <span class="gp-badge bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">{{ $stats['sales_today'] }} txn</span>
+            <article class="gp-kpi gp-kpi--tx" data-gp-widget="sales" data-gp-locked>
+                <div class="gp-kpi-head">
+                    <span class="gp-kpi-icon" aria-hidden="true">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/></svg>
+                    </span>
+                    <span class="gp-kpi-chip">Transactions</span>
                 </div>
-                <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-gp-muted">Ventes du jour</p>
-                <p class="mt-1 text-3xl font-bold tracking-tight text-gp-text dark:text-white">{{ $stats['sales_today'] }}</p>
-                <p class="mt-2 text-xs text-gp-muted">Transactions finalisées aujourd’hui</p>
+                <p class="gp-kpi-label">Ventes du jour</p>
+                <p class="gp-kpi-value">{{ $stats['sales_today'] }}</p>
+                <p class="gp-kpi-hint">Tickets finalisés aujourd’hui</p>
             </article>
 
-            <article class="gp-kpi" data-gp-widget="stock">
-                <div class="gp-widget-toolbar"><button type="button" class="text-[11px] text-gp-muted hover:text-rose-500" data-gp-widget-hide="stock">Masquer</button></div>
-                <div class="flex items-start justify-between gap-3">
-                    <div class="gp-kpi-icon">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4"/></svg>
-                    </div>
-                    <span class="gp-badge {{ $stats['stock_alerts'] > 0 ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' }}">{{ $stats['stock_alerts'] }} alerte{{ $stats['stock_alerts'] > 1 ? 's' : '' }}</span>
+            <article class="gp-kpi gp-kpi--stock" data-gp-widget="stock" data-gp-locked>
+                <div class="gp-kpi-head">
+                    <span class="gp-kpi-icon" aria-hidden="true">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4"/></svg>
+                    </span>
+                    <span class="gp-kpi-chip {{ $stats['stock_alerts'] > 0 ? 'is-warn' : '' }}">Alertes</span>
                 </div>
-                <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-gp-muted">Produits en rupture</p>
-                <p class="mt-1 text-3xl font-bold tracking-tight text-gp-text dark:text-white">{{ $stats['stock_alerts'] }}</p>
-                <p class="mt-2 text-xs text-gp-muted">Seuils critiques du stock</p>
+                <p class="gp-kpi-label">Produits en rupture</p>
+                <p class="gp-kpi-value">{{ $stats['stock_alerts'] }}</p>
+                <p class="gp-kpi-hint">Seuils critiques du stock</p>
             </article>
 
-            <article class="gp-kpi" data-gp-widget="catalog">
-                <div class="gp-widget-toolbar"><button type="button" class="text-[11px] text-gp-muted hover:text-rose-500" data-gp-widget-hide="catalog">Masquer</button></div>
-                <div class="flex items-start justify-between gap-3">
-                    <div class="gp-kpi-icon">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2"/></svg>
-                    </div>
-                    <span class="gp-badge bg-gp-primary-soft text-gp-primary">Catalogue</span>
+            <article class="gp-kpi gp-kpi--catalog" data-gp-widget="catalog" data-gp-locked>
+                <div class="gp-kpi-head">
+                    <span class="gp-kpi-icon" aria-hidden="true">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z"/></svg>
+                    </span>
+                    <span class="gp-kpi-chip">Catalogue</span>
                 </div>
-                <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-gp-muted">Produits actifs</p>
-                <p class="mt-1 text-3xl font-bold tracking-tight text-gp-text dark:text-white">{{ $stats['products'] }}</p>
-                <p class="mt-2 text-xs text-gp-muted">Références dans l’espace de travail</p>
+                <p class="gp-kpi-label">Produits actifs</p>
+                <p class="gp-kpi-value">{{ $stats['products'] }}</p>
+                <p class="gp-kpi-hint">Références de l’espace de travail</p>
             </article>
         </section>
 
@@ -84,9 +80,9 @@
                 <div class="mb-4 flex items-center justify-between gap-3">
                     <div>
                         <h2 class="text-sm font-bold text-gp-text dark:text-white">Activité commerciale</h2>
-                        <p class="mt-0.5 text-xs text-gp-muted">Glissez les widgets en mode Personnaliser</p>
+                        <p class="mt-0.5 text-xs text-gp-muted">Tendance des ventes</p>
                     </div>
-                    <span class="gp-badge bg-gp-primary-soft text-gp-primary">Live</span>
+                    <span class="gp-kpi-chip" style="--kpi-accent:#0d9488">Live</span>
                 </div>
                 <div class="gp-chart-wrap">
                     <canvas id="gp-home-chart" aria-label="Graphique d'activité"></canvas>

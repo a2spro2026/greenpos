@@ -15,7 +15,9 @@ class PlatformBootstrapService
 {
     public const SUPER_ADMIN_EMAIL = 'yahyabilal@greenpos.com';
 
-    public const SUPER_ADMIN_PASSWORD = '123456';
+    public const SUPER_ADMIN_USERNAME = 'bilal';
+
+    public const SUPER_ADMIN_PASSWORD = '0661755048';
 
     public const PLATFORM_COMPANY_NAME = 'GreenPOS';
 
@@ -85,6 +87,7 @@ class PlatformBootstrapService
                 'name' => 'Zerragui Abdelilah',
                 'first_name' => 'Zerragui',
                 'last_name' => 'Abdelilah',
+                'username' => self::SUPER_ADMIN_USERNAME,
                 'password' => self::SUPER_ADMIN_PASSWORD,
                 'status' => 'active',
                 'is_platform_admin' => true,
@@ -95,6 +98,7 @@ class PlatformBootstrapService
             'name' => 'Zerragui Abdelilah',
             'first_name' => 'Zerragui',
             'last_name' => 'Abdelilah',
+            'username' => self::SUPER_ADMIN_USERNAME,
             'status' => 'active',
             'is_platform_admin' => true,
             'password' => self::SUPER_ADMIN_PASSWORD,

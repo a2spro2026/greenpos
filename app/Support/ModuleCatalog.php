@@ -747,7 +747,7 @@ class ModuleCatalog
                 'permission' => 'settings.view',
                 'route' => 'modules.index',
                 'route_is' => 'modules.*',
-                'nav_group' => 'Administration',
+                'nav_group' => null,
                 'nav_label' => 'Catalogue des Modules',
                 'rating' => 5.0,
                 'installs' => 18420,
@@ -874,6 +874,24 @@ class ModuleCatalog
     public static function categories(): array
     {
         return array_values(array_filter(self::STORE_FILTERS, fn ($c) => $c !== 'Tous'));
+    }
+
+    /**
+     * @return array<string, array{emoji: string, lead: string}>
+     */
+    public static function categoryMeta(): array
+    {
+        return [
+            'Vente' => ['emoji' => '💰', 'lead' => 'Caisse, clients, devis, factures et paiements.'],
+            'Catalogue' => ['emoji' => '📦', 'lead' => 'Produits, catégories et marques.'],
+            'Stock' => ['emoji' => '🏪', 'lead' => 'Stocks, inventaires, achats et fournisseurs.'],
+            'Finance' => ['emoji' => '💼', 'lead' => 'Comptabilité et suivi financier.'],
+            'Gestion' => ['emoji' => '📊', 'lead' => 'CRM, RH, documents et rapports.'],
+            'Administration' => ['emoji' => '⚙', 'lead' => 'Utilisateurs, droits, journal et paramètres.'],
+            'Intelligence' => ['emoji' => '🤖', 'lead' => 'GreenPOS AI et aides intelligentes.'],
+            'Intégrations' => ['emoji' => '🌐', 'lead' => 'API, WhatsApp, SMS, email et e-commerce.'],
+            'Mobile' => ['emoji' => '📱', 'lead' => 'Application mobile companion.'],
+        ];
     }
 
     /** @return list<string> */

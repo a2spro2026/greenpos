@@ -26,7 +26,7 @@ class ResetPlatformDemoCommand extends Command
         $this->line('  Tables vidées : '.$result['deleted_tables']);
         $this->line('  Entreprises   : '.$result['companies_left']);
         $this->line('  Utilisateurs  : '.$result['users_left']);
-        $this->line('  Super Admin   : '.PlatformBootstrapService::SUPER_ADMIN_EMAIL);
+        $this->line('  Super Admin   : '.PlatformBootstrapService::SUPER_ADMIN_USERNAME);
         $this->line('  Mot de passe  : '.PlatformBootstrapService::SUPER_ADMIN_PASSWORD);
 
         return self::SUCCESS;

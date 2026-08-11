@@ -15,69 +15,88 @@ class ModuleManagerController extends Controller
     {
     }
 
-    public function index(Request $request): View
+    public function setup(): View|RedirectResponse
     {
-        abort_unless(Workspace::canIgnoringModules('settings.view') || Workspace::role() === 'owner', 403);
-
         $company = Workspace::company();
+        abort_unless($company, 403);
+
+        if (! $company->needsModuleSetup()) {
+            return redirect()->route('home');
+        }
+
         $this->modules->ensureSynced($company);
+        $catalog = $this->modules->catalogForCompany($company)
+            ->reject(fn ($m) => in_array($m['key'], ModuleCatalog::ALWAYS_ON, true))
+            ->values();
 
-        $filters = [
-            'q' => $request->string('q')->toString(),
-            'category' => $request->string('category')->toString() ?: 'Tous',
-            'status' => $request->string('status')->toString(),
-        ];
+        $grouped = $catalog->groupBy('category');
+        $meta = ModuleCatalog::categoryMeta();
+        $sections = collect(ModuleCatalog::categories())
+            ->map(function (string $cat) use ($grouped, $meta) {
+                $items = $grouped->get($cat, collect());
 
-        $catalog = $this->modules->catalogForCompany(
-            $company,
-            $filters['q'] ?: null,
-            $filters['category'] !== 'Tous' ? $filters['category'] : null,
-            $filters['status'] ?: null,
-        );
+                return [
+                    'key' => $cat,
+                    'slug' => \Illuminate\Support\Str::slug($cat),
+                    'emoji' => $meta[$cat]['emoji'] ?? '•',
+                    'lead' => $meta[$cat]['lead'] ?? '',
+                    'modules' => $items,
+                    'available' => $items->filter(fn ($m) => $m['in_plan'] && empty($m['coming_soon']))->count(),
+                ];
+            })
+            ->filter(fn ($section) => $section['modules']->isNotEmpty())
+            ->values();
 
-        $plan = $this->modules->planForCompany($company);
-        $stats = $this->modules->storeStats($company);
-
-        return view('modules.index', [
-            'catalog' => $catalog,
-            'filtersList' => ModuleCatalog::storeFilters(),
-            'plan' => $plan,
-            'filters' => $filters,
-            'stats' => $stats,
+        return view('modules.setup', [
+            'sections' => $sections,
+            'plan' => $this->modules->planForCompany($company),
+            'company' => $company,
+            'availableCount' => $catalog->filter(fn ($m) => $m['in_plan'] && empty($m['coming_soon']))->count(),
         ]);
     }
 
-    public function show(string $module): View
+    public function storeSetup(Request $request): RedirectResponse
     {
-        abort_unless(Workspace::canIgnoringModules('settings.view') || Workspace::role() === 'owner', 403);
-
         $company = Workspace::company();
-        $detail = $this->modules->detailForCompany($module, $company);
-        abort_unless($detail, 404);
+        abort_unless($company, 403);
 
-        return view('modules.show', [
-            'mod' => $detail,
-            'plan' => $this->modules->planForCompany($company),
+        if (! $company->needsModuleSetup()) {
+            return redirect()->route('home');
+        }
+
+        $data = $request->validate([
+            'modules' => ['nullable', 'array'],
+            'modules.*' => ['string'],
         ]);
+
+        $this->modules->applyModules($company, $data['modules'] ?? [], 'setup', true);
+
+        return redirect()
+            ->route('home')
+            ->with('success', 'Vos modules sont activés. Bienvenue dans votre espace GreenPOS.');
+    }
+
+    public function index(Request $request): RedirectResponse
+    {
+        $company = Workspace::company();
+        if ($company?->needsModuleSetup()) {
+            return redirect()->route('modules.setup');
+        }
+
+        return redirect()
+            ->route('home')
+            ->with('warning', 'Pour ajouter un module, contactez le Super Admin GreenPOS.');
+    }
+
+    public function show(string $module): RedirectResponse
+    {
+        return $this->index(request());
     }
 
     public function toggle(Request $request, string $module): RedirectResponse
     {
-        abort_unless(Workspace::canIgnoringModules('settings.view') || Workspace::role() === 'owner', 403);
-
-        $company = Workspace::company();
-        abort_unless($company, 403);
-
-        $enable = $request->boolean('enable');
-        $this->modules->toggleModule($module, $company, $enable);
-
-        $name = ModuleCatalog::get($module)['name'] ?? $module;
-
-        return back()->with(
-            'success',
-            $enable
-                ? "Le module « {$name} » a été activé."
-                : "Le module « {$name} » a été désactivé."
-        );
+        return redirect()
+            ->route('home')
+            ->with('warning', 'Pour ajouter ou retirer un module, contactez le Super Admin GreenPOS.');
     }
 }

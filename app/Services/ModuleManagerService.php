@@ -31,7 +31,7 @@ class ModuleManagerService
         }
     }
 
-    public function syncCompanyFromPlan(Company $company, ?SaasPlan $plan = null): void
+    public function syncCompanyFromPlan(Company $company, ?SaasPlan $plan = null, bool $enablePlanDefaults = true): void
     {
         if (! Schema::hasTable('company_modules')) {
             return;
@@ -45,7 +45,6 @@ class ModuleManagerService
             )))
             : array_merge(ModuleCatalog::ALWAYS_ON, ModuleCatalog::keys()); // demo: all
 
-        // Always include always-on
         foreach (ModuleCatalog::ALWAYS_ON as $key) {
             if (! in_array($key, $allowed, true)) {
                 $allowed[] = $key;
@@ -53,12 +52,13 @@ class ModuleManagerService
         }
 
         foreach (ModuleCatalog::keys() as $key) {
-            $enabled = in_array($key, $allowed, true);
+            $enabled = in_array($key, ModuleCatalog::ALWAYS_ON, true)
+                || ($enablePlanDefaults && in_array($key, $allowed, true));
             CompanyModule::query()->updateOrCreate(
                 ['company_id' => $company->id, 'module_key' => $key],
                 [
                     'is_enabled' => $enabled,
-                    'source' => 'plan',
+                    'source' => $enablePlanDefaults ? 'plan' : 'setup',
                     'enabled_at' => $enabled ? now() : null,
                 ]
             );
@@ -76,7 +76,7 @@ class ModuleManagerService
 
         $count = CompanyModule::query()->where('company_id', $company->id)->count();
         if ($count === 0) {
-            $this->syncCompanyFromPlan($company);
+            $this->syncCompanyFromPlan($company, null, ! $company->needsModuleSetup());
 
             return;
         }
@@ -91,21 +91,13 @@ class ModuleManagerService
             return;
         }
 
-        $plan = $this->planForCompany($company);
-        $planDefaults = ModuleCatalog::defaultModulesForPlan($plan?->code ?? 'default');
-        $allowed = array_values(array_unique(array_merge(
-            ModuleCatalog::ALWAYS_ON,
-            $plan?->modules ?? [],
-            $planDefaults
-        )));
-
         foreach ($missing as $key) {
-            $enabled = in_array($key, $allowed, true);
+            $enabled = in_array($key, ModuleCatalog::ALWAYS_ON, true);
             CompanyModule::query()->create([
                 'company_id' => $company->id,
                 'module_key' => $key,
                 'is_enabled' => $enabled,
-                'source' => 'plan',
+                'source' => 'setup',
                 'enabled_at' => $enabled ? now() : null,
             ]);
         }
@@ -330,6 +322,50 @@ class ModuleManagerService
     }
 
     /**
+     * Applique une sélection de modules (1re config client ou Super Admin).
+     *
+     * @param  list<string>  $keys
+     */
+    public function applyModules(Company $company, array $keys, string $source = 'setup', bool $completeSetup = true): void
+    {
+        $this->ensureSynced($company);
+        $plan = $this->planForCompany($company);
+        $planModules = $plan?->modules ?? ModuleCatalog::keys();
+        $openPlan = $plan === null;
+
+        $wanted = array_values(array_unique(array_merge(
+            ModuleCatalog::ALWAYS_ON,
+            array_values(array_intersect($keys, ModuleCatalog::keys()))
+        )));
+
+        foreach (ModuleCatalog::keys() as $key) {
+            $meta = ModuleCatalog::get($key) ?? [];
+            $inPlan = in_array($key, ModuleCatalog::ALWAYS_ON, true)
+                || in_array($key, $planModules, true)
+                || $openPlan;
+            $comingSoon = (bool) ($meta['coming_soon'] ?? false);
+            $grant = $source === 'admin' || $inPlan;
+            $enable = in_array($key, ModuleCatalog::ALWAYS_ON, true)
+                || (in_array($key, $wanted, true) && $grant && ! $comingSoon);
+
+            CompanyModule::query()->updateOrCreate(
+                ['company_id' => $company->id, 'module_key' => $key],
+                [
+                    'is_enabled' => $enable,
+                    'source' => $source,
+                    'enabled_at' => $enable ? now() : null,
+                ]
+            );
+        }
+
+        if ($completeSetup && Schema::hasColumn('companies', 'modules_setup_at') && ! $company->modules_setup_at) {
+            $company->forceFill(['modules_setup_at' => now()])->save();
+        }
+
+        unset(self::$cache[$company->id]);
+    }
+
+    /**
      * @param  array<string, mixed>  $meta
      * @param  array<string, bool>  $map
      * @param  list<string>  $planModules
@@ -401,6 +437,9 @@ class ModuleManagerService
         $order = ['Pilotage', 'Ventes', 'Catalogue', 'Relation Client', 'Finance', 'Administration'];
 
         foreach (ModuleCatalog::all() as $key => $meta) {
+            if ($key === 'modules') {
+                continue;
+            }
             if (empty($meta['nav_group']) || empty($meta['route']) || empty($meta['nav_label'])) {
                 continue;
             }

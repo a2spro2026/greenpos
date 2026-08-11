@@ -340,8 +340,8 @@ class ProductController extends Controller
 
     protected function ensureCompany(Product $product): void
     {
-        if ($product->company_id !== Workspace::company()?->id) {
-            abort(404);
+        if ((int) $product->company_id !== (int) Workspace::company()?->id) {
+            abort(redirect()->route('products.index')->with('warning', 'Ce produit n’existe plus.'));
         }
     }
 }

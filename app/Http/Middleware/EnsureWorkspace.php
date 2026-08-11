@@ -159,6 +159,31 @@ class EnsureWorkspace
             }
         }
 
+        // Premier login : le client compose son ERP avant d’entrer.
+        $workspaceCompany = Workspace::company();
+        if ($workspaceCompany
+            && ! $impersonating
+            && $workspaceCompany->needsModuleSetup()
+            && ! $request->routeIs(
+                'modules.setup',
+                'modules.setup.store',
+                'logout',
+                'session.lock',
+                'session.unlock',
+                'session.lock.store',
+                'company.suspended'
+            )
+        ) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Veuillez d’abord choisir les modules de votre entreprise.',
+                    'code' => 'modules_setup_required',
+                ], 403);
+            }
+
+            return redirect()->route('modules.setup');
+        }
+
         // Isolation boutique: injecte store_id dans les filtres GET si absent
         if ($request->isMethod('GET') && ! $request->filled('store_id')) {
             $filterId = Workspace::storeFilterId();
@@ -212,17 +237,21 @@ class EnsureWorkspace
                 view()->share('workspaceBrandingFavicon', $brandingService->assetUrl($branding['favicon_path'] ?? null));
                 view()->share('workspaceBrandingLogo', $brandingService->assetUrl($branding['logo_path'] ?? null)
                     ?: $brandingService->assetUrl($branding['logo_compact_path'] ?? null));
+                $appearance = app(\App\Services\SettingService::class)->getGroup('appearance', Workspace::company());
+                view()->share('workspaceSidebarStyle', $appearance['sidebar_style'] ?? 'auto');
             } else {
                 view()->share('workspaceBranding', null);
                 view()->share('workspaceBrandingCss', []);
                 view()->share('workspaceBrandingFavicon', null);
                 view()->share('workspaceBrandingLogo', null);
+                view()->share('workspaceSidebarStyle', 'auto');
             }
         } catch (\Throwable) {
             view()->share('workspaceBranding', null);
             view()->share('workspaceBrandingCss', []);
             view()->share('workspaceBrandingFavicon', null);
             view()->share('workspaceBrandingLogo', null);
+            view()->share('workspaceSidebarStyle', 'auto');
         }
 
         return $next($request);

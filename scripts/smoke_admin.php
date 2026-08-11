@@ -101,7 +101,8 @@ assertTrue($tenant instanceof SaasTenant && (int) $tenant->company_id === (int) 
 assertTrue($user->companies()->where('companies.id', $company->id)->exists(), 'user attached to company');
 
 $modules = CompanyModule::query()->where('company_id', $company->id)->where('is_enabled', true)->count();
-assertTrue($modules > 0, 'modules synced from plan ('.$modules.')');
+assertTrue($modules > 0, 'shell modules synced ('.$modules.')');
+assertTrue($company->needsModuleSetup(), 'new company waits for module setup');
 
 $svc->suspendCompany($company, 'smoke');
 assertTrue($company->fresh()->status === 'inactive', 'company suspended');

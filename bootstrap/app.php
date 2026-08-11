@@ -39,6 +39,36 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo(fn () => route('home'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, $request) {
+            if ($request->expectsJson() || $request->is('build/*', 'up')) {
+                return null;
+            }
+
+            $previous = $e->getPrevious();
+            $isMissingModel = $previous instanceof \Illuminate\Database\Eloquent\ModelNotFoundException;
+
+            if ($request->is('admin/*') && ($isMissingModel || $request->is('admin/registrations/*', 'admin/companies/*'))) {
+                $target = $request->is('admin/registrations*') ? 'admin.registrations.index' : (
+                    $request->is('admin/companies*') ? 'admin.companies.index' : 'admin.dashboard'
+                );
+
+                return redirect()->route($target)
+                    ->with('warning', 'Cet élément n’existe plus (données de test réinitialisées).');
+            }
+
+            if ($request->is('products*')) {
+                return redirect()->route('products.index')
+                    ->with('warning', 'Ce produit n’existe plus.');
+            }
+
+            if ($isMissingModel && $request->user() && ! $request->user()->is_platform_admin) {
+                return redirect()->route('home')
+                    ->with('warning', 'Cet élément n’existe plus.');
+            }
+
+            return null;
+        });
+
         $exceptions->respond(function ($response, $exception, $request) {
             if ($response->getStatusCode() === 419) {
                 if ($request->expectsJson()) {

@@ -142,7 +142,7 @@
         </header>
         <main class="pa-content">
             @if(session('success'))
-                <div class="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">{{ session('success') }}</div>
+                <div class="gp-flash gp-flash-success mb-4" data-gp-flash="success" role="status">{{ session('success') }}</div>
             @endif
             @if(session('error'))
                 <div class="mb-4 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">{{ session('error') }}</div>

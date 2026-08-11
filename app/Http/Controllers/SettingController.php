@@ -304,7 +304,9 @@ class SettingController extends Controller
             'appearance' => [
                 'theme' => $request->string('theme')->toString() ?: 'system',
                 'primary_color' => $request->string('primary_color')->toString() ?: '#16a34a',
-                'sidebar_style' => $request->string('sidebar_style')->toString() ?: 'dark',
+                'sidebar_style' => in_array($request->string('sidebar_style')->toString(), ['auto', 'light', 'dark'], true)
+                    ? $request->string('sidebar_style')->toString()
+                    : 'auto',
                 'date_format' => $request->string('date_format')->toString() ?: 'd/m/Y',
                 'time_format' => $request->string('time_format')->toString() ?: 'H:i',
                 'amount_format' => $request->string('amount_format')->toString() ?: 'fr',

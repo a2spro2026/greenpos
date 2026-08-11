@@ -54,6 +54,8 @@ class CompanyRegistrationService
     {
         $this->saas->ensurePlans();
 
+        $data['owner_email'] = strtolower(trim((string) $data['owner_email']));
+
         if (User::query()->where('email', $data['owner_email'])->exists()) {
             throw ValidationException::withMessages([
                 'owner_email' => 'Un compte existe déjà avec cet e-mail.',
@@ -120,18 +122,21 @@ class CompanyRegistrationService
             ]);
         }
 
-        if (User::query()->where('email', $request->owner_email)->exists()) {
+        $ownerEmail = strtolower(trim((string) $request->owner_email));
+        User::onlyTrashed()->where('email', $ownerEmail)->forceDelete();
+
+        if (User::query()->where('email', $ownerEmail)->exists()) {
             throw ValidationException::withMessages([
                 'owner_email' => 'Un utilisateur existe déjà avec cet e-mail. Impossible d’approuver.',
             ]);
         }
 
-        $approved = DB::transaction(function () use ($request, $admin) {
+        $approved = DB::transaction(function () use ($request, $admin, $ownerEmail) {
             $result = $this->platform->provisionCompany([
                 'name' => $request->company_name,
                 'activity' => $request->activity,
                 'owner_name' => $request->owner_name,
-                'email' => $request->owner_email,
+                'email' => $ownerEmail,
                 'phone' => $request->owner_phone,
                 'address' => $request->address,
                 'country' => $request->country,

@@ -20,9 +20,11 @@
         <div>
             <label class="gp-label">Style sidebar</label>
             <select name="sidebar_style" class="gp-input">
-                <option value="dark" @selected(($settings['sidebar_style'] ?? '') === 'dark')>Sombre</option>
-                <option value="light" @selected(($settings['sidebar_style'] ?? '') === 'light')>Clair</option>
+                <option value="auto" @selected(in_array($settings['sidebar_style'] ?? 'auto', ['auto', ''], true))>Suivre le thème</option>
+                <option value="light" @selected(($settings['sidebar_style'] ?? '') === 'light')>Toujours claire</option>
+                <option value="dark" @selected(($settings['sidebar_style'] ?? '') === 'dark')>Toujours sombre</option>
             </select>
+            <p class="mt-1.5 text-[11px] text-gp-muted">Par défaut, le menu latéral suit le mode clair ou sombre.</p>
         </div>
         <div>
             <label class="gp-label">Format des dates</label>

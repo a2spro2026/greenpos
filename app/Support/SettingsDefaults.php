@@ -123,7 +123,7 @@ class SettingsDefaults
             'appearance' => [
                 'theme' => 'system',
                 'primary_color' => '#0f766e',
-                'sidebar_style' => 'dark',
+                'sidebar_style' => 'auto',
                 'date_format' => 'd/m/Y',
                 'time_format' => 'H:i',
                 'amount_format' => 'fr',

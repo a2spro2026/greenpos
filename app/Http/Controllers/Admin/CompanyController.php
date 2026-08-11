@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\SaasPlan;
 use App\Models\SaasTenant;
+use App\Services\ModuleManagerService;
 use App\Services\PlatformAdminService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,8 +15,10 @@ use Throwable;
 
 class CompanyController extends Controller
 {
-    public function __construct(private PlatformAdminService $platform)
-    {
+    public function __construct(
+        private PlatformAdminService $platform,
+        private ModuleManagerService $modules,
+    ) {
     }
 
     public function index(Request $request): View
@@ -92,7 +95,22 @@ class CompanyController extends Controller
             ->with(['currentSubscription.plan', 'payments', 'subscriptions.plan'])
             ->first();
 
-        return view('admin.companies.show', compact('company', 'tenant'));
+        $this->modules->ensureSynced($company);
+        $catalog = $this->modules->catalogForCompany($company);
+
+        return view('admin.companies.show', compact('company', 'tenant', 'catalog'));
+    }
+
+    public function updateModules(Request $request, Company $company): RedirectResponse
+    {
+        $data = $request->validate([
+            'modules' => ['nullable', 'array'],
+            'modules.*' => ['string'],
+        ]);
+
+        $this->modules->applyModules($company, $data['modules'] ?? [], 'admin', true);
+
+        return back()->with('success', 'Modules de l’entreprise mis à jour.');
     }
 
     public function edit(Company $company): View

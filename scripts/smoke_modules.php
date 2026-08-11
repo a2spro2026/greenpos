@@ -40,6 +40,7 @@ echo "=== Module Manager smoke ===\n";
 assertTrue(Schema::hasTable('company_modules'), 'table company_modules');
 assertTrue(count(ModuleCatalog::keys()) >= 20, 'catalog size');
 assertTrue(Route::has('modules.index'), 'route modules.index');
+assertTrue(Route::has('modules.setup'), 'route modules.setup');
 assertTrue(Route::has('superadmin.modules.index'), 'route superadmin.modules.index');
 
 $mm = app(ModuleManagerService::class);
@@ -76,7 +77,8 @@ $nav = $mm->sidebarNav();
 $labels = collect($nav)->flatMap(fn ($g) => collect($g['items'])->pluck('label'))->all();
 assertTrue(in_array('Produits', $labels, true), 'sidebar has Produits');
 assertTrue(! in_array('CRM Enterprise', $labels, true), 'sidebar hides CRM');
-assertTrue(in_array('Catalogue des Modules', $labels, true) || in_array('Tableau de bord', $labels, true), 'sidebar has core');
+assertTrue(in_array('Tableau de bord', $labels, true), 'sidebar has core');
+assertTrue(! in_array('Catalogue des Modules', $labels, true), 'sidebar hides module store');
 assertTrue(Route::has('modules.show'), 'route modules.show');
 assertTrue(Route::has('modules.toggle'), 'route modules.toggle');
 

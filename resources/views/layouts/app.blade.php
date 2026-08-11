@@ -25,6 +25,12 @@
                 if (t === 'dark') document.documentElement.classList.add('dark');
                 else document.documentElement.classList.remove('dark');
                 document.documentElement.dataset.theme = t;
+                var sidebarStyle = @json($workspaceSidebarStyle ?? 'auto');
+                if (sidebarStyle !== 'light' && sidebarStyle !== 'dark') sidebarStyle = 'auto';
+                document.documentElement.dataset.sidebarStyle = sidebarStyle;
+                var sidebarDark = sidebarStyle === 'dark' || (sidebarStyle !== 'light' && t === 'dark');
+                document.documentElement.classList.toggle('gp-sidebar-dark', sidebarDark);
+                document.documentElement.classList.toggle('gp-sidebar-light', !sidebarDark);
                 var d = localStorage.getItem('gp-density') || brandingDensity || 'comfortable';
                 if (d === 'standard') d = 'comfortable';
                 document.documentElement.classList.add('gp-density-' + d);
@@ -65,18 +71,18 @@
 
     <div class="gp-shell">
         <aside id="gp-sidebar" class="gp-sidebar" aria-label="Navigation principale">
-            <div class="flex h-[var(--gp-header-height)] items-center justify-between gap-2 border-b border-white/[0.06] px-3">
-                <a href="{{ route('home') }}" class="flex min-w-0 items-center gap-3 rounded-xl px-1 py-1 transition hover:bg-white/5">
-                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-400 to-emerald-700 text-sm font-extrabold shadow-lg shadow-teal-900/40">G</span>
+            <div class="gp-sidebar-head flex h-[var(--gp-header-height)] items-center justify-between gap-2 border-b px-3">
+                <a href="{{ route('home') }}" class="gp-sidebar-brand flex min-w-0 items-center gap-3 rounded-xl px-1 py-1 transition">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-400 to-emerald-700 text-sm font-extrabold text-white shadow-lg shadow-teal-900/40">G</span>
                     <span class="gp-brand-text min-w-0">
-                        <span class="block truncate text-sm font-bold tracking-tight">GreenPOS</span>
+                        <span class="gp-sidebar-heading block truncate text-sm font-bold tracking-tight">GreenPOS</span>
                         <span class="block truncate text-[11px] text-gp-sidebar-text">Enterprise</span>
                     </span>
                 </a>
-                <button type="button" id="gp-sidebar-close" class="gp-btn-ghost text-white lg:hidden" aria-label="Fermer le menu">
+                <button type="button" id="gp-sidebar-close" class="gp-btn-ghost lg:hidden" aria-label="Fermer le menu">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
-                <button type="button" id="gp-sidebar-collapse" class="gp-btn-ghost hidden text-gp-sidebar-text hover:text-white lg:inline-flex" aria-label="Replier la sidebar" title="Replier">
+                <button type="button" id="gp-sidebar-collapse" class="gp-btn-ghost hidden text-gp-sidebar-text lg:inline-flex" aria-label="Replier la sidebar" title="Replier">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
                 </button>
             </div>
@@ -295,15 +301,15 @@
                 @endif
             </nav>
 
-            <div class="border-t border-white/[0.06] p-4">
+            <div class="gp-sidebar-foot border-t p-4">
                 <div class="gp-sidebar-footer-text space-y-2">
                     <div>
                         <p class="text-[10px] font-semibold uppercase tracking-wider text-gp-sidebar-text/70">Entreprise active</p>
-                        <p class="truncate text-sm font-semibold text-white">{{ $workspaceCompany->name ?? 'Entreprise Démo' }}</p>
+                        <p class="gp-sidebar-heading truncate text-sm font-semibold">{{ $workspaceCompany->name ?? 'Entreprise Démo' }}</p>
                     </div>
                     <div class="flex items-center justify-between gap-2 text-[11px] text-gp-sidebar-text">
                         <span>Enterprise · UX</span>
-                        <span class="rounded-md bg-teal-500/20 px-1.5 py-0.5 font-semibold text-teal-300">{{ ucfirst($workspaceRole ?? 'owner') }}</span>
+                        <span class="rounded-md bg-teal-500/15 px-1.5 py-0.5 font-semibold text-teal-800 dark:text-teal-300">{{ ucfirst($workspaceRole ?? 'owner') }}</span>
                     </div>
                 </div>
             </div>

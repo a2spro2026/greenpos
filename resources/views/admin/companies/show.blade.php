@@ -82,4 +82,40 @@
         </div>
     </div>
 </div>
+
+<form method="POST" action="{{ route('admin.companies.modules.update', $company) }}" class="pa-card mt-4">
+    @csrf
+    @method('PUT')
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <h2 class="text-sm font-bold text-white">Modules de l’entreprise</h2>
+            <p class="mt-1 text-xs text-zinc-500">Le client ne peut plus modifier ce catalogue. Vous seul pouvez ajouter ou retirer un module.</p>
+        </div>
+        <button class="pa-btn pa-btn-primary" type="submit">Enregistrer les modules</button>
+    </div>
+    <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        @foreach($catalog as $mod)
+            @php
+                $locked = !empty($mod['always_on']) || !empty($mod['coming_soon']);
+            @endphp
+            <label class="flex items-start gap-2 rounded-lg border border-white/5 px-3 py-2 text-sm {{ $locked && ! $mod['is_enabled'] ? 'opacity-50' : '' }}">
+                <input
+                    type="checkbox"
+                    name="modules[]"
+                    value="{{ $mod['key'] }}"
+                    class="mt-1"
+                    @checked($mod['is_enabled'])
+                    @disabled($locked)
+                >
+                @if(!empty($mod['always_on']))
+                    <input type="hidden" name="modules[]" value="{{ $mod['key'] }}">
+                @endif
+                <span>
+                    <span class="font-semibold text-zinc-100">{{ $mod['name'] }}</span>
+                    <span class="block text-xs text-zinc-500">{{ $mod['category'] }} · {{ $mod['in_plan'] ? 'Inclus plan' : 'Hors plan' }}{{ !empty($mod['coming_soon']) ? ' · Bientôt' : '' }}</span>
+                </span>
+            </label>
+        @endforeach
+    </div>
+</form>
 @endsection
