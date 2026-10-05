@@ -38,6 +38,11 @@
                 <a href="{{ route('sales.return', $sale) }}" class="gp-btn-secondary !text-orange-600">Retour</a>
             @endif
         @endcan
+        @can('sales.refund')
+            @if(!in_array($sale->status, ['cancelled','draft']) && ($sale->total_ttc - $sale->amount_returned) > 0.009)
+                <a href="{{ route('sales.refund', $sale) }}" class="gp-btn-secondary">Rembourser</a>
+            @endif
+        @endcan
 
         @can('sales.print')
             <a href="{{ route('sales.print', $sale) }}" target="_blank" class="gp-btn-secondary">Imprimer</a>
@@ -78,6 +83,7 @@
         <div class="grid gap-4 lg:grid-cols-2">
             <article class="gp-card">
                 <h2 class="mb-4 text-sm font-bold">Informations générales</h2>
+                <p class="mb-3 text-sm">Statut paiement : <strong>{{ $sale->paymentStatusLabel() }}</strong></p>
                 <dl class="grid gap-3 text-sm sm:grid-cols-2">
                     <div><dt class="text-gp-muted">Référence</dt><dd class="font-semibold">{{ $sale->number }}</dd></div>
                     <div><dt class="text-gp-muted">Date</dt><dd class="font-semibold">{{ optional($sale->sold_at)->format('d/m/Y') }}</dd></div>
@@ -164,10 +170,16 @@
                             @foreach($sale->payments as $p)
                                 <tr>
                                     <td class="px-4 py-3">{{ optional($p->paid_at)->format('d/m/Y') }}</td>
-                                    <td class="px-4 py-3">{{ $p->methodLabel() }}</td>
+                                    <td class="px-4 py-3">{{ $p->methodLabel() }} @if($p->is_deferred)<span class="text-xs text-amber-700">différé · {{ $p->collection_status }}</span>@endif</td>
                                     <td class="px-4 py-3 text-right font-bold">{{ number_format($p->amount, 2, ',', ' ') }}</td>
-                                    <td class="px-4 py-3 text-gp-muted">{{ $p->reference ?? '—' }}</td>
-                                    <td class="px-4 py-3 text-gp-muted">{{ $p->creator?->name ?? '—' }}</td>
+                                    <td class="px-4 py-3 text-gp-muted">{{ $p->transaction_number ?: $p->piece_number ?: $p->reference ?: '—' }}</td>
+                                    <td class="px-4 py-3 text-gp-muted">
+                                        {{ $p->creator?->name ?? '—' }}
+                                        @if($p->is_deferred && in_array($p->collection_status, ['scheduled','pending','overdue'], true))
+                                            <form method="POST" action="{{ route('sales.payments.collect', $p) }}" class="mt-1">@csrf<button class="text-xs font-semibold text-gp-primary">Encaisser</button></form>
+                                            <form method="POST" action="{{ route('sales.payments.cancel', $p) }}">@csrf<button class="text-xs text-rose-600">Annuler</button></form>
+                                        @endif
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -180,10 +192,25 @@
                     <h2 class="mb-4 text-sm font-bold">Enregistrer un paiement</h2>
                     <form method="POST" action="{{ route('sales.payments.store', $sale) }}" class="space-y-3">
                         @csrf
-                        <div><label class="gp-label">Mode</label><select name="method" class="gp-select w-full">@foreach(\App\Models\SalePayment::METHODS as $k => $v)<option value="{{ $k }}">{{ $v }}</option>@endforeach</select></div>
-                        <div><label class="gp-label">Montant *</label><input type="number" name="amount" step="0.01" min="0.01" max="{{ $sale->balanceDue() }}" value="{{ $sale->balanceDue() }}" class="gp-input w-full" required></div>
+                        <div><label class="gp-label">Mode</label>
+                            <select name="custom_list_id" class="gp-select w-full" onchange="const o=this.selectedOptions[0]; document.getElementById('pay-method-fallback').value=o.dataset.method||'cash';">
+                                @forelse($paymentModes ?? [] as $mode)
+                                    <option value="{{ $mode->id }}" data-method="{{ $mode->meta('method', 'cash') }}">{{ $mode->name }} · {{ $mode->meta('timing') === 'deferred' ? 'différé' : 'immédiat' }}</option>
+                                @empty
+                                    @foreach(\App\Models\SalePayment::METHODS as $k => $v)<option value="" data-method="{{ $k }}">{{ $v }}</option>@endforeach
+                                @endforelse
+                            </select>
+                            <input type="hidden" name="method" id="pay-method-fallback" value="{{ ($paymentModes ?? collect())->first()?->meta('method', 'cash') ?? 'cash' }}">
+                        </div>
+                        <div><label class="gp-label">Montant *</label><input type="number" name="amount" step="0.01" min="0.01" value="{{ $sale->balanceDue() }}" class="gp-input w-full" required></div>
                         <div><label class="gp-label">Date</label><input type="date" name="paid_at" value="{{ now()->format('Y-m-d') }}" class="gp-input w-full"></div>
-                        <div><label class="gp-label">Référence</label><input type="text" name="reference" class="gp-input w-full" placeholder="N° chèque, virement…"></div>
+                        <div><label class="gp-label">N° transaction</label><input name="transaction_number" class="gp-input w-full"></div>
+                        <div><label class="gp-label">N° pièce</label><input name="piece_number" class="gp-input w-full"></div>
+                        <div><label class="gp-label">Banque</label><input name="bank_name" class="gp-input w-full"></div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div><label class="gp-label">Émission</label><input type="date" name="issue_date" class="gp-input w-full"></div>
+                            <div><label class="gp-label">Échéance</label><input type="date" name="due_date" class="gp-input w-full"></div>
+                        </div>
                         <button class="gp-btn-primary w-full">Enregistrer</button>
                     </form>
                 </section>
@@ -197,8 +224,16 @@
             <div class="border-b border-gp-border px-5 py-4 dark:border-white/10">
                 <h2 class="text-sm font-bold">Retours</h2>
             </div>
-            @if($sale->returns->isEmpty())
-                <div class="px-6 py-12 text-center text-sm text-gp-muted">Aucun retour enregistré.</div>
+            @if($sale->refunds->isNotEmpty())
+                <div class="border-b border-gp-border px-5 py-4 dark:border-white/10">
+                    <h3 class="mb-2 text-sm font-bold">Remboursements monétaires</h3>
+                    @foreach($sale->refunds as $refund)
+                        <p class="text-sm">{{ $refund->number }} · {{ number_format($refund->amount, 2, ',', ' ') }} · {{ $refund->method }} · {{ $refund->statusLabel() }} · {{ $refund->reason }}</p>
+                    @endforeach
+                </div>
+            @endif
+            @if($sale->returns->isEmpty() && $sale->refunds->isEmpty())
+                <div class="px-6 py-12 text-center text-sm text-gp-muted">Aucun retour ni remboursement.</div>
             @else
                 @foreach($sale->returns as $ret)
                     <div class="border-b border-gp-border px-5 py-4 dark:border-white/10 last:border-b-0">

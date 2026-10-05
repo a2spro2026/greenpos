@@ -52,7 +52,7 @@ class AppServiceProvider extends ServiceProvider
             Gate::define('quotes.'.$ability, fn () => Workspace::can('quotes.'.$ability));
         }
 
-        foreach (['view', 'create', 'update', 'cancel', 'return', 'export', 'print'] as $ability) {
+        foreach (['view', 'create', 'update', 'cancel', 'return', 'refund', 'export', 'print'] as $ability) {
             Gate::define('sales.'.$ability, fn () => Workspace::can('sales.'.$ability));
         }
 
@@ -72,7 +72,7 @@ class AppServiceProvider extends ServiceProvider
             Gate::define('dashboard.'.$ability, fn () => Workspace::can('dashboard.'.$ability));
         }
 
-        foreach (['view', 'create', 'update', 'delete', 'export', 'print', 'validate', 'cancel'] as $ability) {
+        foreach (['view', 'create', 'update', 'delete', 'export', 'print', 'validate', 'cancel', 'collect'] as $ability) {
             Gate::define('payments.'.$ability, fn () => Workspace::can('payments.'.$ability));
         }
 

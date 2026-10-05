@@ -68,12 +68,22 @@
                     <input type="text" name="qr_code" value="{{ old('qr_code', $product->qr_code ?? '') }}" class="w-full rounded-xl border border-gp-border bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-[#0f1614]">
                 </div>
                 <div>
-                    <label class="mb-1.5 block text-xs font-semibold text-gp-muted">Unité *</label>
-                    <select name="unit" class="w-full rounded-xl border border-gp-border bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-[#0f1614]">
-                        @foreach($units as $key => $label)
-                            <option value="{{ $key }}" @selected(old('unit', $product->unit ?? 'pce') === $key)>{{ $label }}</option>
+                    <label class="mb-1.5 block text-xs font-semibold text-gp-muted">Unité de mesure</label>
+                    <select name="measure_unit_id" class="w-full rounded-xl border border-gp-border bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-[#0f1614]">
+                        <option value="">Texte libre</option>
+                        @foreach($measureUnits ?? [] as $measureUnit)
+                            <option value="{{ $measureUnit->id }}" @selected((string) old('measure_unit_id', $product->measure_unit_id ?? '') === (string) $measureUnit->id)>{{ $measureUnit->label() }}</option>
                         @endforeach
                     </select>
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-xs font-semibold text-gp-muted">Unité (texte libre)</label>
+                    <input type="text" name="unit" value="{{ old('unit', $product->unit ?? 'pce') }}" list="product-unit-suggestions" class="w-full rounded-xl border border-gp-border bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-[#0f1614]">
+                    <datalist id="product-unit-suggestions">
+                        @foreach($units as $key => $label)
+                            <option value="{{ $key }}">{{ $label }}</option>
+                        @endforeach
+                    </datalist>
                 </div>
             </div>
         </section>
@@ -96,6 +106,22 @@
                 @endforeach
             </div>
         </section>
+
+        <section class="gp-card space-y-3">
+            <div class="flex items-center justify-between">
+                <h2 class="text-sm font-bold text-gp-text dark:text-white">Options & extras</h2>
+                <a href="{{ route('products.options.index') }}" class="text-xs font-semibold text-gp-primary">Options & variantes</a>
+            </div>
+            @php $selectedOptions = old('option_ids', isset($product) ? $product->options->pluck('id')->all() : []); @endphp
+            @forelse($productOptions ?? [] as $option)
+                <label class="flex items-start gap-2 text-sm">
+                    <input type="checkbox" name="option_ids[]" value="{{ $option->id }}" @checked(in_array($option->id, $selectedOptions))>
+                    <span>{{ $option->name }} <span class="text-gp-muted">— {{ $option->variants->pluck('name')->implode(', ') }}</span></span>
+                </label>
+            @empty
+                <p class="text-xs text-gp-muted">Aucune option catalogue. Les variantes SKU ci-dessus restent inchangées.</p>
+            @endforelse
+        </section>
     </div>
 
     <div class="space-y-6">
@@ -107,6 +133,15 @@
                     <option value="">—</option>
                     @foreach($categories as $category)
                         <option value="{{ $category->id }}" @selected((string) old('category_id', $product->category_id ?? '') === (string) $category->id)>{{ $category->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label class="mb-1.5 block text-xs font-semibold text-gp-muted">Sous-catégorie</label>
+                <select name="subcategory_id" class="w-full rounded-xl border border-gp-border bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-[#0f1614]">
+                    <option value="">—</option>
+                    @foreach($subcategories ?? [] as $subcategory)
+                        <option value="{{ $subcategory->id }}" @selected((string) old('subcategory_id', $product->subcategory_id ?? '') === (string) $subcategory->id)>{{ $subcategory->category?->name }} / {{ $subcategory->name }}</option>
                     @endforeach
                 </select>
             </div>

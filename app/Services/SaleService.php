@@ -340,32 +340,66 @@ class SaleService
     public function recordPayment(Sale $sale, array $data): SalePayment
     {
         $amount = (float) ($data['amount'] ?? 0);
-        if ($amount <= 0 || $amount > $sale->balanceDue() + 0.01) {
+        $sale->loadMissing('payments');
+        $openDeferred = app(SalePaymentWorkflowService::class)->openDeferredAmount($sale->payments);
+        $room = max(0, round($sale->balanceDue() - $openDeferred, 2));
+        if ($amount <= 0 || $amount > $room + 0.01) {
             throw ValidationException::withMessages(['amount' => 'Montant invalide ou supérieur au solde.']);
         }
 
         return DB::transaction(function () use ($sale, $data, $amount) {
+            $workflow = app(SalePaymentWorkflowService::class);
+            $resolved = $workflow->resolve($sale->company_id, array_merge($data, ['amount' => $amount]));
             $payment = SalePayment::query()->create([
                 'sale_id' => $sale->id,
                 'created_by' => Workspace::user()?->id,
-                'method' => $data['method'] ?? 'cash',
-                'amount' => $amount,
-                'paid_at' => $data['paid_at'] ?? now()->toDateString(),
-                'reference' => $data['reference'] ?? null,
-                'notes' => $data['notes'] ?? null,
+                'method' => $resolved['method'],
+                'amount' => $resolved['amount'],
+                'paid_at' => $resolved['paid_at'],
+                'reference' => $resolved['reference'],
+                'notes' => $resolved['notes'],
+                'custom_list_id' => $resolved['custom_list_id'],
+                'is_deferred' => $resolved['is_deferred'],
+                'transfer_mode' => $resolved['transfer_mode'],
+                'transaction_number' => $resolved['transaction_number'],
+                'piece_number' => $resolved['piece_number'],
+                'bank_name' => $resolved['bank_name'],
+                'issue_date' => $resolved['issue_date'],
+                'due_date' => $resolved['due_date'],
+                'confirmed_at' => $resolved['confirmed_at'],
+                'collection_status' => $resolved['collection_status'],
+                'received_amount' => $resolved['received_amount'],
+                'change_amount' => $resolved['change_amount'],
+                'scheduled_for' => $resolved['scheduled_for'],
             ]);
 
-            $sale->update([
-                'amount_paid' => round((float) $sale->amount_paid + $amount, 2),
-                'updated_by' => Workspace::user()?->id,
-            ]);
+            if (! $payment->is_deferred) {
+                $sale->update([
+                    'amount_paid' => round((float) $sale->amount_paid + $amount, 2),
+                    'updated_by' => Workspace::user()?->id,
+                ]);
+            } else {
+                $sale->update(['updated_by' => Workspace::user()?->id]);
+            }
+
+            $workflow->recordHistory(
+                $sale->company_id,
+                $payment->is_deferred ? 'scheduled' : 'confirmed',
+                $amount,
+                $payment->id,
+                null,
+                $resolved['notes'],
+                $resolved['scheduled_for']
+            );
+            $workflow->recalculateSale($sale->fresh());
 
             $this->log($sale, 'payment', 'Paiement '.number_format($amount, 2, ',', ' ').' MAD.', [
                 'payment_id' => $payment->id,
                 'method' => $payment->method,
+                'is_deferred' => $payment->is_deferred,
             ]);
 
-            return $payment;
+            return $payment->fresh();
         });
     }
 
@@ -418,7 +452,7 @@ class SaleService
         ];
     }
 
-    protected function log(Sale $sale, string $action, string $message, ?array $meta = null): void
+    public function log(Sale $sale, string $action, string $message, ?array $meta = null): void
     {
         SaleLog::query()->create([
             'sale_id' => $sale->id,

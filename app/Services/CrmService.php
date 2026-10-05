@@ -341,6 +341,8 @@ class CrmService
             'due_at' => $data['due_at'] ?? null,
             'all_day' => $data['all_day'] ?? false,
             'priority' => $data['priority'] ?? 'normal',
+            'recurrence' => $data['recurrence'] ?? 'none',
+            'recurrence_until' => $data['recurrence_until'] ?? null,
         ]);
     }
 

@@ -27,6 +27,7 @@
             </label>
         </div>
         <div class="sm:col-span-2">
+            <p class="mb-2 text-xs text-gp-muted">Les cases ci-dessous restent le réglage rapide. Les champs obligatoires et le timing immédiat/différé se gèrent dans <a class="text-gp-primary" href="{{ route('settings.lists.index', ['type' => 'mode_de_paiement']) }}">Listes personnalisées</a>.</p>
             <p class="mb-3 text-xs font-bold uppercase tracking-wide text-gp-muted">Modes de paiement</p>
             <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach([

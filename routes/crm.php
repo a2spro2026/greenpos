@@ -29,6 +29,8 @@ Route::middleware(['web', 'workspace', 'audit'])->prefix('crm')->name('crm.')->g
     Route::post('/activities', [CrmController::class, 'activitiesStore'])->name('activities.store');
     Route::get('/activities/{activity}', [CrmController::class, 'activitiesShow'])->name('activities.show');
     Route::post('/activities/{activity}/complete', [CrmController::class, 'activitiesComplete'])->name('activities.complete');
+    Route::post('/activities/{activity}/reminder', [CrmController::class, 'activitiesReminder'])->name('activities.reminder');
+    Route::post('/activities/{activity}/attachments', [CrmController::class, 'activitiesAttachment'])->name('activities.attachment');
 
     Route::get('/calendar', [CrmController::class, 'calendar'])->name('calendar');
     Route::get('/emails', [CrmController::class, 'emailsIndex'])->name('emails.index');

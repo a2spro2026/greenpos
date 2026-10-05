@@ -43,6 +43,7 @@ class Product extends Model
     protected $fillable = [
         'company_id',
         'category_id',
+        'subcategory_id',
         'brand_id',
         'supplier_id',
         'created_by',
@@ -54,6 +55,7 @@ class Product extends Model
         'barcode',
         'qr_code',
         'unit',
+        'measure_unit_id',
         'short_description',
         'description',
         'purchase_price',
@@ -91,6 +93,21 @@ class Product extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function subcategory(): BelongsTo
+    {
+        return $this->belongsTo(Subcategory::class);
+    }
+
+    public function measureUnit(): BelongsTo
+    {
+        return $this->belongsTo(MeasureUnit::class);
+    }
+
+    public function options(): BelongsToMany
+    {
+        return $this->belongsToMany(ProductOption::class, 'product_option_product')->withTimestamps();
     }
 
     public function brand(): BelongsTo

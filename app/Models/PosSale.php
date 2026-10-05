@@ -28,13 +28,25 @@ class PosSale extends Model
         'customer_id',
         'cashier_id',
         'number',
+        'client_uuid',
+        'ticket_name',
+        'ticket_group',
+        'service_mode',
+        'service_mode_list_id',
+        'predefined_ticket_id',
+        'delivery_platform_id',
         'status',
+        'payment_status_code',
         'subtotal_ht',
         'tax_total',
         'discount_total',
         'total_ttc',
+        'amount_refunded',
         'currency',
         'notes',
+        'appointment_at',
+        'pickup_date',
+        'delivery_address',
         'held_payload',
         'held_at',
         'completed_at',
@@ -48,6 +60,9 @@ class PosSale extends Model
             'tax_total' => 'decimal:2',
             'discount_total' => 'decimal:2',
             'total_ttc' => 'decimal:2',
+            'amount_refunded' => 'decimal:2',
+            'appointment_at' => 'datetime',
+            'pickup_date' => 'date',
             'held_payload' => 'array',
             'held_at' => 'datetime',
             'completed_at' => 'datetime',
@@ -88,6 +103,26 @@ class PosSale extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(PosPayment::class);
+    }
+
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(SaleRefund::class)->latest();
+    }
+
+    public function serviceModeList(): BelongsTo
+    {
+        return $this->belongsTo(CustomList::class, 'service_mode_list_id');
+    }
+
+    public function deliveryPlatform(): BelongsTo
+    {
+        return $this->belongsTo(DeliveryPlatform::class);
+    }
+
+    public function paymentStatusLabel(): string
+    {
+        return \App\Services\SalePaymentWorkflowService::STATUSES[$this->payment_status_code] ?? ($this->payment_status_code ?: 'Impayé');
     }
 
     public function scopeForCompany(Builder $query, int $companyId): Builder

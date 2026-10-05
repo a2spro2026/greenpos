@@ -6,8 +6,12 @@ use App\Models\Customer;
 use App\Models\PosSale;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Models\SalePayment;
 use App\Models\Store;
 use App\Models\User;
+use App\Services\CollectionService;
+use App\Services\CustomListService;
+use App\Services\SaleRefundService;
 use App\Services\SaleService;
 use App\Support\Workspace;
 use Illuminate\Http\RedirectResponse;
@@ -150,14 +154,16 @@ class SaleController extends Controller
     {
         $this->authorize('sales.view');
         $this->ensureCompany($sale);
-        $sale->load(['lines.product', 'customer', 'store', 'salesperson', 'creator', 'payments.creator', 'returns.returnLines.saleLine', 'returns.creator', 'logs.user', 'posSale', 'quote', 'invoice']);
+        $sale->load(['lines.product', 'customer', 'store', 'salesperson', 'creator', 'payments.creator', 'payments.collections', 'returns.returnLines.saleLine', 'returns.creator', 'refunds', 'logs.user', 'posSale', 'quote', 'invoice']);
 
         $tab = $request->string('tab', 'overview')->toString();
         if (! in_array($tab, ['overview', 'products', 'payments', 'returns', 'invoice', 'history', 'documents'], true)) {
             $tab = 'overview';
         }
 
-        return view('sales.show', compact('sale', 'tab'));
+        $paymentModes = app(CustomListService::class)->forType($sale->company_id, 'mode_de_paiement');
+
+        return view('sales.show', compact('sale', 'tab', 'paymentModes'));
     }
 
     public function edit(Sale $sale): View
@@ -249,11 +255,18 @@ class SaleController extends Controller
         $this->ensureCompany($sale);
 
         $data = $request->validate([
-            'method' => ['required', 'in:cash,card,bank_transfer,mobile,check,other'],
+            'method' => ['required', 'string', 'max:64'],
+            'custom_list_id' => ['nullable', 'integer'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'paid_at' => ['nullable', 'date'],
             'reference' => ['nullable', 'string', 'max:120'],
             'notes' => ['nullable', 'string', 'max:500'],
+            'transfer_mode' => ['nullable', 'string', 'max:64'],
+            'transaction_number' => ['nullable', 'string', 'max:120'],
+            'piece_number' => ['nullable', 'string', 'max:120'],
+            'bank_name' => ['nullable', 'string', 'max:120'],
+            'issue_date' => ['nullable', 'date'],
+            'due_date' => ['nullable', 'date'],
         ]);
 
         $this->sales->recordPayment($sale, $data);
@@ -331,8 +344,71 @@ class SaleController extends Controller
         ];
     }
 
+    public function refundForm(Sale $sale): View
+    {
+        $this->authorize('sales.refund');
+        $this->ensureCompany($sale);
+        $sale->load('lines');
+
+        return view('sales.refund', ['sale' => $sale, 'methods' => SalePayment::METHODS]);
+    }
+
+    public function refund(Request $request, Sale $sale, SaleRefundService $refunds): RedirectResponse
+    {
+        $this->authorize('sales.refund');
+        $this->ensureCompany($sale);
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'method' => ['required', 'string', 'max:32'],
+            'reason' => ['required', 'string', 'max:255'],
+            'notes' => ['nullable', 'string', 'max:500'],
+            'restock' => ['sometimes', 'boolean'],
+            'lines' => ['nullable', 'array'],
+            'lines.*.line_id' => ['nullable', 'integer'],
+            'lines.*.quantity' => ['nullable', 'numeric', 'min:0'],
+        ]);
+        $data['restock'] = $request->boolean('restock');
+        $refunds->refundSale($sale, $data);
+
+        return redirect()->route('sales.show', ['sale' => $sale, 'tab' => 'returns'])->with('success', 'Remboursement enregistré.');
+    }
+
+    public function collectPayment(SalePayment $payment, CollectionService $collections): RedirectResponse
+    {
+        $this->authorize('payments.collect');
+        $this->ensurePayment($payment);
+        $collections->collect($payment, request('notes'));
+
+        return back()->with('success', 'Paiement encaissé.');
+    }
+
+    public function reschedulePayment(Request $request, SalePayment $payment, CollectionService $collections): RedirectResponse
+    {
+        $this->authorize('payments.collect');
+        $this->ensurePayment($payment);
+        $data = $request->validate(['due_date' => ['required', 'date'], 'notes' => ['nullable', 'string', 'max:500']]);
+        $collections->reschedule($payment, $data['due_date'], $data['notes'] ?? null);
+
+        return back()->with('success', 'Échéance mise à jour.');
+    }
+
+    public function cancelPayment(SalePayment $payment, CollectionService $collections): RedirectResponse
+    {
+        $this->authorize('payments.collect');
+        $this->ensurePayment($payment);
+        $collections->cancel($payment, request('notes'));
+
+        return back()->with('success', 'Paiement différé annulé.');
+    }
+
     protected function ensureCompany(Sale $sale): void
     {
         if ($sale->company_id !== Workspace::company()?->id) { abort(404); }
+    }
+
+    protected function ensurePayment(SalePayment $payment): void
+    {
+        $payment->loadMissing('sale');
+        $this->ensureCompany($payment->sale);
     }
 }

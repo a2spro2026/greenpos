@@ -5,7 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ProductRequest;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\MeasureUnit;
 use App\Models\Product;
+use App\Models\ProductOption;
+use App\Models\Subcategory;
 use App\Models\Supplier;
 use App\Services\ProductService;
 use App\Support\Workspace;
@@ -100,7 +103,7 @@ class ProductController extends Controller
     public function show(Product $product): View
     {
         $this->ensureCompany($product);
-        $product->load(['category', 'brand', 'supplier', 'variants', 'images', 'stores', 'changeLogs.user', 'creator', 'editor']);
+        $product->load(['category', 'subcategory', 'measureUnit', 'brand', 'supplier', 'variants', 'options.variants', 'images', 'stores', 'changeLogs.user', 'creator', 'editor']);
 
         return view('products.show', [
             'product' => $product,
@@ -111,7 +114,7 @@ class ProductController extends Controller
     public function edit(Product $product): View
     {
         $this->ensureCompany($product);
-        $product->load(['variants', 'stores']);
+        $product->load(['variants', 'stores', 'options']);
 
         return view('products.edit', array_merge($this->formData(), [
             'product' => $product,
@@ -328,6 +331,9 @@ class ProductController extends Controller
 
         return [
             'categories' => Category::query()->where('company_id', $company->id)->orderBy('name')->get(),
+            'subcategories' => Subcategory::query()->where('company_id', $company->id)->where('is_active', true)->with('category')->orderBy('name')->get(),
+            'measureUnits' => MeasureUnit::query()->where('company_id', $company->id)->where('is_active', true)->orderBy('name')->get(),
+            'productOptions' => ProductOption::query()->where('company_id', $company->id)->where('is_active', true)->with('variants')->orderBy('name')->get(),
             'brands' => Brand::query()->where('company_id', $company->id)->orderBy('name')->get(),
             'suppliers' => Supplier::query()->where('company_id', $company->id)->orderBy('name')->get(),
             'stores' => $company->stores()->orderBy('name')->get(),

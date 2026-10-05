@@ -4,6 +4,7 @@
         ['route' => 'pos.terminal', 'label' => 'Caisse', 'match' => 'pos.terminal'],
         ['route' => 'pos.tickets.index', 'label' => 'Tickets', 'match' => 'pos.tickets.*'],
         ['route' => 'pos.sessions.index', 'label' => 'Sessions', 'match' => 'pos.sessions.*'],
+        ['route' => 'pos.printers.index', 'label' => 'Imprimantes', 'match' => 'pos.printers.*'],
     ];
 @endphp
 <nav class="mb-6 flex gap-2 overflow-x-auto pb-1">

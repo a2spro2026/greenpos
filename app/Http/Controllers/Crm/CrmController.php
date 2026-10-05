@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Crm;
 
 use App\Http\Controllers\Controller;
 use App\Models\CrmActivity;
+use App\Models\CrmActivityAttachment;
 use App\Models\CrmEmailLog;
 use App\Models\CrmEmailTemplate;
 use App\Models\CrmLead;
@@ -299,7 +300,7 @@ class CrmController extends Controller
     public function activitiesStore(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'type' => ['required', 'in:call,email,meeting,task,follow_up,note'],
+            'type' => ['required', 'in:call,email,meeting,appointment,task,follow_up,note'],
             'subject' => ['required', 'string', 'max:255'],
             'body' => ['nullable', 'string'],
             'crm_lead_id' => ['nullable', 'exists:crm_leads,id'],
@@ -308,6 +309,8 @@ class CrmController extends Controller
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'due_at' => ['nullable', 'date'],
             'priority' => ['nullable', 'in:low,normal,high'],
+            'recurrence' => ['nullable', 'in:none,daily,weekly,monthly'],
+            'recurrence_until' => ['nullable', 'date'],
         ]);
 
         $activity = $this->crm->createActivity($data);
@@ -318,9 +321,35 @@ class CrmController extends Controller
     public function activitiesShow(CrmActivity $activity): View
     {
         abort_unless($activity->company_id === $this->crm->companyId(), 403);
-        $activity->load(['owner', 'lead', 'opportunity', 'customer']);
+        $activity->load(['owner', 'lead', 'opportunity', 'customer', 'attachments']);
 
         return view('crm.activities.show', compact('activity'));
+    }
+
+    public function activitiesReminder(CrmActivity $activity): RedirectResponse
+    {
+        abort_unless($activity->company_id === $this->crm->companyId(), 403);
+        $activity->update(['reminder_sent_at' => now()]);
+
+        return back()->with('success', 'Rappel marqué comme envoyé.');
+    }
+
+    public function activitiesAttachment(Request $request, CrmActivity $activity): RedirectResponse
+    {
+        abort_unless($activity->company_id === $this->crm->companyId(), 403);
+        $request->validate(['file' => ['required', 'file', 'max:8192']]);
+        $file = $request->file('file');
+        $path = $file->store('crm-activities/'.$activity->id, 'public');
+        CrmActivityAttachment::query()->create([
+            'crm_activity_id' => $activity->id,
+            'uploaded_by' => $request->user()?->id,
+            'path' => $path,
+            'original_name' => $file->getClientOriginalName(),
+            'mime' => $file->getClientMimeType(),
+            'size' => $file->getSize() ?: 0,
+        ]);
+
+        return back()->with('success', 'Pièce jointe ajoutée.');
     }
 
     public function activitiesComplete(CrmActivity $activity): RedirectResponse
