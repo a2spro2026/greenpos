@@ -14,6 +14,7 @@ class CrmActivity extends Model
         'call' => 'Appel',
         'email' => 'Email',
         'meeting' => 'Réunion',
+        'appointment' => 'Rendez-vous',
         'task' => 'Tâche',
         'follow_up' => 'Relance',
         'note' => 'Note',
@@ -23,6 +24,7 @@ class CrmActivity extends Model
         'call' => '📞',
         'email' => '✉️',
         'meeting' => '📅',
+        'appointment' => '🗓️',
         'task' => '✅',
         'follow_up' => '🔁',
         'note' => '📝',
@@ -37,7 +39,8 @@ class CrmActivity extends Model
     protected $fillable = [
         'company_id', 'owner_user_id', 'crm_lead_id', 'crm_opportunity_id', 'customer_id',
         'type', 'status', 'subject', 'body',
-        'starts_at', 'ends_at', 'due_at', 'completed_at', 'all_day', 'priority', 'meta',
+        'starts_at', 'ends_at', 'due_at', 'completed_at', 'reminder_sent_at', 'all_day', 'priority',
+        'recurrence', 'recurrence_until', 'parent_activity_id', 'meta',
     ];
 
     protected function casts(): array
@@ -47,6 +50,8 @@ class CrmActivity extends Model
             'ends_at' => 'datetime',
             'due_at' => 'datetime',
             'completed_at' => 'datetime',
+            'reminder_sent_at' => 'datetime',
+            'recurrence_until' => 'date',
             'all_day' => 'boolean',
             'meta' => 'array',
         ];
@@ -70,6 +75,24 @@ class CrmActivity extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_activity_id');
+    }
+
+    public function attachments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CrmActivityAttachment::class);
+    }
+
+    public function isOverdue(): bool
+    {
+        return $this->status === 'planned'
+            && $this->due_at
+            && $this->due_at->isPast()
+            && in_array($this->type, ['task', 'follow_up', 'appointment'], true);
     }
 
     public function scopeForCompany(Builder $q, int $companyId): Builder

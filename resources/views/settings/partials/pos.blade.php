@@ -30,7 +30,7 @@
             </div>
         </div>
         <div>
-            <label class="gp-label">Imprimante par défaut</label>
+            <label class="gp-label">Imprimante par défaut <a class="font-normal text-gp-primary" href="{{ route('pos.printers.index') }}">Profils billetterie</a></label>
             <input type="text" name="default_printer" value="{{ $settings['default_printer'] }}" class="gp-input" placeholder="Ex. Epson TM-T20">
         </div>
         <div>

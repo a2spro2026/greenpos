@@ -15,6 +15,8 @@
     <div><label class="mb-1 block text-xs text-gp-muted">Début</label><input type="datetime-local" name="starts_at" class="gp-input" value="{{ now()->addHour()->format('Y-m-d\TH:i') }}"></div>
     <div><label class="mb-1 block text-xs text-gp-muted">Fin</label><input type="datetime-local" name="ends_at" class="gp-input" value="{{ now()->addHours(2)->format('Y-m-d\TH:i') }}"></div>
     <div><label class="mb-1 block text-xs text-gp-muted">Échéance tâche</label><input type="datetime-local" name="due_at" class="gp-input"></div>
+    <div><label class="mb-1 block text-xs text-gp-muted">Récurrence</label><select name="recurrence" class="gp-input"><option value="none">Aucune</option><option value="daily">Quotidienne</option><option value="weekly">Hebdomadaire</option><option value="monthly">Mensuelle</option></select></div>
+    <div><label class="mb-1 block text-xs text-gp-muted">Jusqu'au</label><input type="date" name="recurrence_until" class="gp-input"></div>
     <div class="sm:col-span-2"><label class="mb-1 block text-xs text-gp-muted">Notes</label><textarea name="body" rows="3" class="gp-input"></textarea></div>
 </div>
 <button class="gp-btn-primary">Créer</button>

@@ -54,7 +54,9 @@
      data-resume-base="{{ url('/pos/held') }}"
      data-csrf="{{ csrf_token() }}"
      data-session-open="{{ $session ? '1' : '0' }}"
-     data-can-hold="{{ $canHold ? '1' : '0' }}">
+     data-can-hold="{{ $canHold ? '1' : '0' }}"
+     data-snapshot-url="{{ route('pos.offline.snapshot') }}"
+     data-sync-url="{{ route('pos.offline.sync') }}">
 
     {{-- LEFT: catalog --}}
     <section class="flex min-h-0 flex-col border-b border-slate-200 dark:border-white/10 lg:border-b-0 lg:border-r">
@@ -70,6 +72,7 @@
                     @else
                         Aucune caisse ouverte
                     @endif
+                    <span id="pos-offline-pill" class="ml-1 hidden rounded-full bg-amber-500/20 px-2 py-0.5 font-bold text-amber-300">Hors ligne</span>
                 </p>
             </div>
             @if(!$session)
@@ -143,6 +146,46 @@
         </div>
 
         <div class="space-y-2 border-t border-white/10 px-4 py-3 text-sm">
+            <div class="grid grid-cols-2 gap-2">
+                <label class="block">
+                    <span class="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">Ticket</span>
+                    <select id="pos-ticket" class="h-10 w-full rounded-xl bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
+                        <option value="">Libre</option>
+                        @foreach($tickets as $ticket)
+                            <option value="{{ $ticket->id }}" data-name="{{ $ticket->name }}" data-group="{{ $ticket->meta('group') }}">{{ $ticket->name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">Service</span>
+                    <select id="pos-service" class="h-10 w-full rounded-xl bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
+                        @foreach($serviceModes as $mode)
+                            <option value="{{ $mode->id }}" data-agent="{{ $mode->meta('requires_delivery_agent') ? '1' : '0' }}" data-platform="{{ $mode->meta('platform_id') }}" @selected($mode->is_default)>{{ $mode->name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            </div>
+            <div id="pos-delivery" class="hidden space-y-2">
+                <select id="pos-platform" class="h-10 w-full rounded-xl bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
+                    <option value="">Livreur / plateforme</option>
+                    @foreach($platforms as $platform)
+                        <option value="{{ $platform->id }}">{{ $platform->name }}</option>
+                    @endforeach
+                </select>
+                <input id="pos-address" type="text" maxlength="500" placeholder="Adresse de livraison" class="h-10 w-full rounded-xl bg-white/5 px-3 text-sm ring-1 ring-white/10 placeholder:text-slate-500 focus:outline-none focus:ring-emerald-500/50">
+            </div>
+            @if($discounts->isNotEmpty() || $taxes->isNotEmpty())
+                <div class="flex gap-2 overflow-x-auto pb-1">
+                    @foreach($discounts as $discount)
+                        <button type="button" class="pos-discount shrink-0 rounded-full bg-white/5 px-3 py-1.5 text-[11px] font-bold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
+                                data-kind="{{ $discount->meta('discount_type', 'percent') }}" data-value="{{ $discount->meta('value', 0) }}">{{ $discount->name }}</button>
+                    @endforeach
+                    @foreach($taxes as $tax)
+                        <button type="button" class="pos-tax shrink-0 rounded-full bg-white/5 px-3 py-1.5 text-[11px] font-bold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
+                                data-rate="{{ $tax->meta('rate', 0) }}">{{ $tax->name }}</button>
+                    @endforeach
+                </div>
+            @endif
             <label class="block">
                 <span class="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">Notes</span>
                 <input id="pos-notes" type="text" maxlength="500" placeholder="Note ticket…" class="h-10 w-full rounded-xl bg-white/5 px-3 text-sm ring-1 ring-white/10 placeholder:text-slate-500 focus:outline-none focus:ring-emerald-500/50">
@@ -200,11 +243,8 @@
         <p class="mb-1 text-xs font-bold uppercase tracking-wider text-slate-500">Total à encaisser</p>
         <p id="pay-total" class="mb-5 text-4xl font-extrabold text-emerald-400">0,00</p>
 
-        <div class="mb-4 grid grid-cols-3 gap-2">
-            <button type="button" data-method="cash" class="pay-method rounded-2xl bg-emerald-500 py-3 text-sm font-bold text-slate-950">Espèces</button>
-            <button type="button" data-method="card" class="pay-method rounded-2xl bg-white/5 py-3 text-sm font-bold ring-1 ring-white/10">Carte</button>
-            <button type="button" data-method="mobile" class="pay-method rounded-2xl bg-white/5 py-3 text-sm font-bold ring-1 ring-white/10">Mobile</button>
-        </div>
+        <div id="pay-methods" class="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3"></div>
+        <div id="pay-fields" class="mb-4 hidden space-y-2"></div>
 
         <div id="pay-cash-block" class="mb-4 space-y-3">
             <label class="block">
@@ -242,7 +282,38 @@
     </div>
 </div>
 
+<div id="pos-option-modal" class="pos-modal-backdrop fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4">
+    <div class="w-full max-w-md rounded-3xl bg-[#111827] p-5 shadow-2xl ring-1 ring-white/10">
+        <div class="mb-4 flex items-center justify-between">
+            <h3 id="opt-title" class="text-lg font-bold">Options</h3>
+            <button type="button" data-close-opt class="rounded-lg p-2 hover:bg-white/10">✕</button>
+        </div>
+        <div id="opt-body" class="max-h-80 space-y-4 overflow-y-auto"></div>
+        <p class="mt-4 text-sm text-slate-400">Prix <span id="opt-price" class="text-lg font-extrabold text-emerald-400">0,00</span></p>
+        <p id="opt-error" class="mt-2 hidden text-sm font-semibold text-rose-400"></p>
+        <div class="mt-4 flex gap-2">
+            <button type="button" data-close-opt class="flex-1 rounded-2xl bg-white/5 py-3 text-sm font-bold ring-1 ring-white/10">Annuler</button>
+            <button type="button" id="opt-add" class="flex-[1.4] rounded-2xl bg-emerald-500 py-3 text-sm font-extrabold text-slate-950">Ajouter</button>
+        </div>
+    </div>
+</div>
+
 <div id="pos-toast" class="pointer-events-none fixed bottom-6 left-1/2 z-[60] hidden -translate-x-1/2 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-bold text-slate-950 shadow-xl pos-toast"></div>
+<script type="application/json" id="pos-lists">@json([
+    'payments' => $paymentModes->map(fn ($m) => [
+        'id' => $m->id,
+        'name' => $m->name,
+        'method' => $m->meta('method', 'cash'),
+        'timing' => $m->meta('timing', 'immediate'),
+        'required_fields' => array_values((array) $m->meta('required_fields', [])),
+    ])->values(),
+    'fallback' => [
+        ['id' => null, 'name' => 'Espèces', 'method' => 'cash', 'timing' => 'immediate', 'required_fields' => []],
+        ['id' => null, 'name' => 'Carte', 'method' => 'card', 'timing' => 'immediate', 'required_fields' => []],
+        ['id' => null, 'name' => 'Mobile', 'method' => 'mobile', 'timing' => 'immediate', 'required_fields' => []],
+    ],
+])</script>
+<script src="{{ asset('js/pos-offline.js') }}"></script>
 
 <script>
 (() => {
@@ -255,6 +326,19 @@
         csrf: root.dataset.csrf,
         sessionOpen: root.dataset.sessionOpen === '1',
         canHold: root.dataset.canHold === '1',
+        snapshotUrl: root.dataset.snapshotUrl,
+        syncUrl: root.dataset.syncUrl,
+    };
+
+    const lists = JSON.parse(document.getElementById('pos-lists').textContent || '{}');
+    let paymentModes = (lists.payments && lists.payments.length) ? lists.payments : (lists.fallback || []);
+    const fieldLabels = {
+        transfer_mode: 'Mode de virement',
+        transaction_number: 'N° transaction',
+        piece_number: 'N° de pièce',
+        bank_name: 'Banque',
+        issue_date: 'Date d\'émission',
+        due_date: 'Date d\'échéance',
     };
 
     const initialCatalog = @json($catalog);
@@ -262,11 +346,12 @@
     let categoryId = '';
     let cart = [];
     let searchTimer = null;
-    let payMethod = 'cash';
+    let payMode = paymentModes[0] || { id: null, method: 'cash', timing: 'immediate', required_fields: [] };
     let mixedMode = false;
     let heldSaleId = null;
     let barcodeBuffer = '';
     let barcodeTimer = null;
+    let pendingProduct = null;
 
     const el = {
         search: document.getElementById('pos-search'),
@@ -288,6 +373,19 @@
         payError: document.getElementById('pay-error'),
         cashBlock: document.getElementById('pay-cash-block'),
         toast: document.getElementById('pos-toast'),
+        methods: document.getElementById('pay-methods'),
+        fields: document.getElementById('pay-fields'),
+        service: document.getElementById('pos-service'),
+        ticket: document.getElementById('pos-ticket'),
+        delivery: document.getElementById('pos-delivery'),
+        platform: document.getElementById('pos-platform'),
+        address: document.getElementById('pos-address'),
+        offlinePill: document.getElementById('pos-offline-pill'),
+        optModal: document.getElementById('pos-option-modal'),
+        optBody: document.getElementById('opt-body'),
+        optTitle: document.getElementById('opt-title'),
+        optPrice: document.getElementById('opt-price'),
+        optError: document.getElementById('opt-error'),
     };
 
     const money = (n) => Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -306,7 +404,7 @@
     function totals() {
         let sub = 0, disc = 0, tax = 0;
         cart.forEach((l) => {
-            const gross = l.qty * l.price;
+            const gross = l.qty * (Number(l.basePrice || l.price || 0) + Number(l.optionExtra || 0));
             const d = gross * ((l.discount || 0) / 100);
             const net = gross - d;
             const t = net * ((l.tax || 0) / 100);
@@ -332,7 +430,7 @@
                 <div class="flex items-start justify-between gap-2">
                     <div class="min-w-0">
                         <p class="truncate text-sm font-bold">${escapeHtml(l.name)}</p>
-                        <p class="text-xs text-slate-400">${money(l.price)} · TVA ${l.tax}%</p>
+                        <p class="text-xs text-slate-400">${money(l.basePrice + (l.optionExtra || 0))} · TVA ${l.tax}%${l.optionLabel ? ' · ' + escapeHtml(l.optionLabel) : ''}</p>
                     </div>
                     <button type="button" data-remove="${i}" class="rounded-lg px-2 py-1 text-rose-300 hover:bg-rose-500/20">✕</button>
                 </div>
@@ -348,7 +446,8 @@
     }
 
     function lineTotal(l) {
-        const gross = l.qty * l.price;
+        const unit = Number(l.basePrice || l.price || 0) + Number(l.optionExtra || 0);
+        const gross = l.qty * unit;
         const d = gross * ((l.discount || 0) / 100);
         const net = gross - d;
         return net + net * ((l.tax || 0) / 100);
@@ -358,12 +457,13 @@
         return String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
-    function addProduct(p, qty = 1) {
-        if (!cfg.sessionOpen) {
-            toast('Ouvrez une caisse avant de vendre', false);
-            return;
-        }
-        const existing = cart.find((l) => l.product_id === p.id);
+    function optionKey(ids) {
+        return (ids || []).map(Number).slice().sort((a, b) => a - b).join(',');
+    }
+
+    function pushLine(p, qty, optionIds, optionExtra, optionLabel) {
+        const ids = (optionIds || []).map(Number);
+        const existing = cart.find((l) => l.product_id === p.id && optionKey(l.option_variant_ids) === optionKey(ids));
         if (existing) {
             existing.qty += qty;
         } else {
@@ -371,7 +471,11 @@
                 product_id: p.id,
                 name: p.name,
                 sku: p.sku,
+                basePrice: Number(p.sale_price),
                 price: Number(p.sale_price),
+                optionExtra: Number(optionExtra || 0),
+                option_variant_ids: ids,
+                optionLabel: optionLabel || '',
                 tax: Number(p.tax_rate ?? 20),
                 qty,
                 discount: 0,
@@ -379,6 +483,86 @@
         }
         renderCart();
         toast(p.name + ' ajouté');
+    }
+
+    function addProduct(p, qty = 1) {
+        if (!cfg.sessionOpen) {
+            toast('Ouvrez une caisse avant de vendre', false);
+            return;
+        }
+        const full = products.find((x) => Number(x.id) === Number(p.id)) || p;
+        const options = full.options || [];
+        if (options.length && !p._configured) {
+            openOptions(full);
+            return;
+        }
+        pushLine(full, qty, p.option_variant_ids || [], p.optionExtra || 0, p.optionLabel || '');
+    }
+
+    function openOptions(p) {
+        pendingProduct = p;
+        el.optTitle.textContent = p.name;
+        el.optError.classList.add('hidden');
+        el.optBody.innerHTML = (p.options || []).map((option) => `
+            <fieldset class="space-y-1">
+                <legend class="text-xs font-bold uppercase tracking-wider text-slate-400">${escapeHtml(option.name)}${option.is_required ? ' *' : ''}</legend>
+                ${(option.variants || []).map((variant) => `
+                    <label class="flex items-center justify-between gap-2 rounded-xl bg-white/5 px-3 py-2 text-sm ring-1 ring-white/10">
+                        <span class="flex items-center gap-2">
+                            <input type="${option.selection_mode === 'fixed' ? 'radio' : 'checkbox'}" name="opt-${option.id}" value="${variant.id}" data-extra="${variant.extra_price}" data-name="${escapeHtml(variant.name)}" data-option="${option.id}" ${option.is_required && option.selection_mode === 'fixed' ? '' : ''}>
+                            ${escapeHtml(variant.name)}
+                        </span>
+                        <span class="text-emerald-300">+${money(variant.extra_price)}</span>
+                    </label>
+                `).join('')}
+            </fieldset>
+        `).join('');
+        updateOptionPrice();
+        el.optModal.classList.remove('hidden');
+        el.optModal.classList.add('flex');
+    }
+
+    function selectedOptions() {
+        const inputs = [...el.optBody.querySelectorAll('input:checked')];
+        return inputs.map((input) => ({
+            id: Number(input.value),
+            extra: Number(input.dataset.extra || 0),
+            name: input.dataset.name || '',
+            optionId: Number(input.dataset.option),
+        }));
+    }
+
+    function updateOptionPrice() {
+        if (!pendingProduct) return;
+        const extra = selectedOptions().reduce((sum, row) => sum + row.extra, 0);
+        el.optPrice.textContent = money(Number(pendingProduct.sale_price) + extra);
+    }
+
+    function confirmOptions() {
+        if (!pendingProduct) return;
+        const chosen = selectedOptions();
+        for (const option of pendingProduct.options || []) {
+            const count = chosen.filter((row) => row.optionId === option.id).length;
+            if (option.is_required && count === 0) {
+                el.optError.textContent = option.name + ' est obligatoire.';
+                el.optError.classList.remove('hidden');
+                return;
+            }
+            if (option.selection_mode === 'fixed' && count > 1) {
+                el.optError.textContent = option.name + ' n\'accepte qu\'un seul choix.';
+                el.optError.classList.remove('hidden');
+                return;
+            }
+        }
+        const extra = chosen.reduce((sum, row) => sum + row.extra, 0);
+        pushLine(pendingProduct, 1, chosen.map((row) => row.id), extra, chosen.map((row) => row.name).join(', '));
+        closeOptions();
+    }
+
+    function closeOptions() {
+        pendingProduct = null;
+        el.optModal.classList.add('hidden');
+        el.optModal.classList.remove('flex');
     }
 
     function renderProducts(list) {
@@ -394,7 +578,7 @@
                 : '<span class="text-[10px] text-slate-500">Service</span>';
             return `
                 <button type="button" class="pos-product flex min-h-[110px] flex-col justify-between rounded-2xl bg-white/5 p-3 text-left ring-1 ring-white/10 hover:bg-emerald-500/15 hover:ring-emerald-500/40"
-                        data-add='${JSON.stringify({ id: p.id, name: p.name, sale_price: p.sale_price, tax_rate: p.tax_rate, sku: p.sku }).replace(/'/g, '&#39;')}'>
+                        data-product-id="${p.id}">
                     <span class="line-clamp-2 text-sm font-bold leading-snug">${escapeHtml(p.name)}</span>
                     <span class="mt-2 flex items-end justify-between gap-1">
                         <span class="text-base font-extrabold text-emerald-400">${money(p.sale_price)}</span>
@@ -404,28 +588,83 @@
         }).join('');
     }
 
+    function filterLocal(list, q) {
+        const needle = (q || '').trim().toLowerCase();
+        return (list || []).filter((p) => {
+            if (categoryId && String(p.category_id) !== String(categoryId)) return false;
+            if (!needle) return true;
+            return String(p.name || '').toLowerCase().includes(needle)
+                || String(p.sku || '').toLowerCase().includes(needle)
+                || String(p.barcode || '') === q.trim();
+        });
+    }
+
     async function fetchCatalog(q = '') {
         const url = new URL(cfg.catalogUrl, window.location.origin);
         if (q) url.searchParams.set('q', q);
         if (categoryId) url.searchParams.set('category_id', categoryId);
-        const res = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
-        const data = await res.json();
-        products = data.products || [];
-        renderProducts(products);
+        try {
+            const res = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!res.ok) throw new Error('catalog');
+            const data = await res.json();
+            products = data.products || [];
+            renderProducts(products);
+            setOffline(false);
+        } catch (e) {
+            const cached = window.GreenPosOffline ? await window.GreenPosOffline.products() : products;
+            products = filterLocal(cached, q);
+            renderProducts(products);
+            setOffline(true);
+        }
     }
 
     function payloadItems() {
         return cart.map((l) => ({
             product_id: l.product_id,
             quantity: l.qty,
-            unit_price: l.price,
+            unit_price: Number(l.basePrice ?? l.price),
             discount_percent: l.discount || 0,
+            option_variant_ids: l.option_variant_ids || [],
         }));
+    }
+
+    function saleContext() {
+        const service = el.service?.selectedOptions?.[0];
+        const ticket = el.ticket?.selectedOptions?.[0];
+        return {
+            service_mode_list_id: el.service?.value ? Number(el.service.value) : null,
+            predefined_ticket_id: el.ticket?.value ? Number(el.ticket.value) : null,
+            ticket_name: ticket?.dataset?.name || null,
+            ticket_group: ticket?.dataset?.group || null,
+            delivery_platform_id: el.platform?.value ? Number(el.platform.value) : null,
+            delivery_address: el.address?.value || null,
+            requires_agent: service?.dataset?.agent === '1',
+        };
+    }
+
+    function syncDelivery() {
+        if (!el.service || !el.delivery) return;
+        const needs = el.service.selectedOptions[0]?.dataset.agent === '1';
+        el.delivery.classList.toggle('hidden', !needs);
+        const platformId = el.service.selectedOptions[0]?.dataset.platform;
+        if (needs && platformId && el.platform && !el.platform.value) {
+            el.platform.value = platformId;
+        }
+    }
+
+    function renderPayMethods() {
+        el.methods.innerHTML = paymentModes.map((mode, index) => `
+            <button type="button" data-mode-index="${index}" class="pay-method rounded-2xl py-3 text-sm font-bold ${index === 0 ? 'bg-emerald-500 text-slate-950' : 'bg-white/5 ring-1 ring-white/10'}">${escapeHtml(mode.name)}</button>
+        `).join('');
     }
 
     function openPay() {
         if (!cart.length) return toast('Panier vide', false);
         if (!cfg.sessionOpen) return toast('Ouvrez une caisse', false);
+        const ctx = saleContext();
+        if (ctx.requires_agent && !ctx.delivery_platform_id) {
+            return toast('Choisissez un livreur ou une plateforme', false);
+        }
         const t = totals();
         el.payTotal.textContent = money(t.total);
         el.tendered.value = t.total.toFixed(2);
@@ -433,35 +672,82 @@
         el.payError.classList.add('hidden');
         mixedMode = false;
         document.getElementById('pay-mixed-block').classList.add('hidden');
-        el.cashBlock.classList.remove('hidden');
-        setMethod('cash');
+        renderPayMethods();
+        setMode(0);
         el.payModal.classList.remove('hidden');
         el.payModal.classList.add('flex');
-        el.tendered.focus();
-        el.tendered.select();
+        if (payMode.method === 'cash' && payMode.timing !== 'deferred') {
+            el.tendered.focus();
+            el.tendered.select();
+        }
     }
 
-    function setMethod(m) {
-        payMethod = m;
+    function setMode(index) {
+        payMode = paymentModes[index] || paymentModes[0];
         document.querySelectorAll('.pay-method').forEach((btn) => {
-            const on = btn.dataset.method === m;
+            const on = Number(btn.dataset.modeIndex) === Number(index);
             btn.classList.toggle('bg-emerald-500', on);
             btn.classList.toggle('text-slate-950', on);
             btn.classList.toggle('bg-white/5', !on);
             btn.classList.toggle('ring-1', !on);
             btn.classList.toggle('ring-white/10', !on);
         });
-        el.cashBlock.classList.toggle('hidden', m !== 'cash' || mixedMode);
-        if (m !== 'cash') {
+        const showCash = !mixedMode && payMode.method === 'cash' && payMode.timing !== 'deferred';
+        el.cashBlock.classList.toggle('hidden', !showCash);
+        renderPayFields();
+        if (!showCash) {
             el.tendered.value = totals().total.toFixed(2);
             updateChange();
         }
+    }
+
+    function renderPayFields() {
+        const fields = (payMode.required_fields || []).filter((field) => fieldLabels[field]);
+        if (!fields.length || mixedMode) {
+            el.fields.classList.add('hidden');
+            el.fields.innerHTML = '';
+            return;
+        }
+        el.fields.classList.remove('hidden');
+        el.fields.innerHTML = fields.map((field) => {
+            const type = field.endsWith('_date') ? 'date' : 'text';
+            return `<label class="block"><span class="mb-1 block text-xs font-bold text-slate-400">${fieldLabels[field]}</span><input data-pay-field="${field}" type="${type}" class="h-11 w-full rounded-xl bg-white/5 px-3 text-sm ring-1 ring-white/10"></label>`;
+        }).join('');
+    }
+
+    function paymentExtras() {
+        const extra = {};
+        el.fields.querySelectorAll('[data-pay-field]').forEach((input) => {
+            extra[input.dataset.payField] = input.value || null;
+        });
+        return extra;
     }
 
     function updateChange() {
         const total = totals().total;
         const tendered = Number(el.tendered.value || 0);
         el.change.textContent = money(Math.max(0, tendered - total));
+    }
+
+    function buildSaleBody(payments) {
+        const ctx = saleContext();
+        return {
+            items: payloadItems(),
+            payments,
+            customer_id: el.customer.value || null,
+            notes: el.notes.value || null,
+            held_sale_id: heldSaleId,
+            client_uuid: (window.crypto?.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+                const r = Math.random() * 16 | 0;
+                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+            })),
+            service_mode_list_id: ctx.service_mode_list_id,
+            predefined_ticket_id: ctx.predefined_ticket_id,
+            ticket_name: ctx.ticket_name,
+            ticket_group: ctx.ticket_group,
+            delivery_platform_id: ctx.delivery_platform_id,
+            delivery_address: ctx.delivery_address,
+        };
     }
 
     async function confirmPay() {
@@ -474,16 +760,16 @@
             if (cash > 0) payments.push({ method: 'cash', amount: cash, tendered: cash });
             if (card > 0) payments.push({ method: 'card', amount: card });
             if (mobile > 0) payments.push({ method: 'mobile', amount: mobile });
-        } else if (payMethod === 'cash') {
+        } else if (payMode.method === 'cash' && payMode.timing !== 'deferred') {
             const tendered = Number(el.tendered.value || 0);
             if (tendered + 0.001 < total) {
                 el.payError.textContent = 'Montant reçu insuffisant.';
                 el.payError.classList.remove('hidden');
                 return;
             }
-            payments = [{ method: 'cash', amount: total, tendered }];
+            payments = [{ method: payMode.method, custom_list_id: payMode.id, amount: total, tendered, ...paymentExtras() }];
         } else {
-            payments = [{ method: payMethod, amount: total }];
+            payments = [{ method: payMode.method, custom_list_id: payMode.id, amount: total, ...paymentExtras() }];
         }
 
         const paid = payments.reduce((s, p) => s + Number(p.amount), 0);
@@ -493,16 +779,14 @@
             return;
         }
 
-        const body = {
-            items: payloadItems(),
-            payments,
-            customer_id: el.customer.value || null,
-            notes: el.notes.value || null,
-            held_sale_id: heldSaleId,
-        };
+        const body = buildSaleBody(payments);
 
         document.getElementById('pay-confirm').disabled = true;
         try {
+            if (!navigator.onLine) {
+                await queueOffline(body);
+                return;
+            }
             const res = await fetch(cfg.checkoutUrl, {
                 method: 'POST',
                 headers: {
@@ -528,10 +812,37 @@
             }
             fetchCatalog(el.search.value.trim());
         } catch (e) {
+            if (!navigator.onLine || e instanceof TypeError) {
+                await queueOffline(body);
+                return;
+            }
             el.payError.textContent = e.message;
             el.payError.classList.remove('hidden');
         } finally {
             document.getElementById('pay-confirm').disabled = false;
+        }
+    }
+
+    async function queueOffline(body) {
+        if (!window.GreenPosOffline) {
+            el.payError.textContent = 'Hors ligne : file locale indisponible.';
+            el.payError.classList.remove('hidden');
+            return;
+        }
+        await window.GreenPosOffline.enqueue(body);
+        cart = [];
+        renderCart();
+        closePay();
+        setOffline(true);
+        toast('Vente mise en file hors ligne');
+    }
+
+    function setOffline(on) {
+        el.offlinePill?.classList.toggle('hidden', !on);
+        if (on && window.GreenPosOffline) {
+            window.GreenPosOffline.count().then((n) => {
+                el.offlinePill.textContent = n ? ('Hors ligne · ' + n + ' en attente') : 'Hors ligne';
+            });
         }
     }
 
@@ -576,10 +887,17 @@
                 sale_price: it.unit_price || 0,
                 tax_rate: 20,
             };
+            const ids = (it.option_variant_ids || []).map(Number);
+            const variants = (p.options || []).flatMap((option) => option.variants || []);
+            const chosen = variants.filter((variant) => ids.includes(Number(variant.id)));
             cart.push({
                 product_id: it.product_id,
                 name: p.name,
+                basePrice: Number(it.unit_price ?? p.sale_price),
                 price: Number(it.unit_price ?? p.sale_price),
+                optionExtra: chosen.reduce((sum, variant) => sum + Number(variant.extra_price || 0), 0),
+                optionLabel: chosen.map((variant) => variant.name).join(', '),
+                option_variant_ids: ids,
                 tax: Number(p.tax_rate ?? 20),
                 qty: Number(it.quantity),
                 discount: Number(it.discount_percent || 0),
@@ -644,9 +962,10 @@
     });
 
     el.grid.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-add]');
+        const btn = e.target.closest('[data-product-id]');
         if (!btn) return;
-        addProduct(JSON.parse(btn.getAttribute('data-add')));
+        const p = products.find((x) => String(x.id) === String(btn.dataset.productId));
+        if (p) addProduct(p);
     });
 
     document.querySelectorAll('.pos-fav').forEach((btn) => {
@@ -698,8 +1017,31 @@
     });
     document.querySelectorAll('[data-close-pay]').forEach((b) => b.addEventListener('click', closePay));
     document.querySelectorAll('[data-close-held]').forEach((b) => b.addEventListener('click', closeHeld));
+    document.querySelectorAll('[data-close-opt]').forEach((b) => b.addEventListener('click', closeOptions));
+    document.getElementById('opt-add').addEventListener('click', confirmOptions);
+    el.optBody.addEventListener('change', updateOptionPrice);
     document.querySelectorAll('.pos-resume-item').forEach((b) => b.addEventListener('click', () => resumeSale(b.dataset.id)));
-    document.querySelectorAll('.pay-method').forEach((b) => b.addEventListener('click', () => setMethod(b.dataset.method)));
+    el.methods.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-mode-index]');
+        if (!btn) return;
+        setMode(Number(btn.dataset.modeIndex));
+    });
+    el.service?.addEventListener('change', syncDelivery);
+    document.querySelectorAll('.pos-discount').forEach((btn) => btn.addEventListener('click', () => {
+        const kind = btn.dataset.kind;
+        const value = Number(btn.dataset.value || 0);
+        const base = totals().subtotal || 1;
+        const percent = kind === 'amount' ? Math.min(100, (value / base) * 100) : value;
+        cart.forEach((line) => { line.discount = Math.min(100, Math.max(0, percent)); });
+        renderCart();
+        toast('Remise appliquée');
+    }));
+    document.querySelectorAll('.pos-tax').forEach((btn) => btn.addEventListener('click', () => {
+        const rate = Number(btn.dataset.rate || 0);
+        cart.forEach((line) => { line.tax = rate; });
+        renderCart();
+        toast('Taxe ' + rate + '%');
+    }));
     el.tendered.addEventListener('input', updateChange);
     document.querySelectorAll('[data-quick]').forEach((b) => b.addEventListener('click', () => {
         const v = b.dataset.quick;
@@ -710,7 +1052,8 @@
     document.getElementById('pay-toggle-mixed').addEventListener('click', () => {
         mixedMode = !mixedMode;
         document.getElementById('pay-mixed-block').classList.toggle('hidden', !mixedMode);
-        el.cashBlock.classList.toggle('hidden', mixedMode || payMethod !== 'cash');
+        el.cashBlock.classList.toggle('hidden', mixedMode || payMode.method !== 'cash' || payMode.timing === 'deferred');
+        renderPayFields();
         if (mixedMode) {
             const t = totals().total;
             document.getElementById('mix-cash').value = t.toFixed(2);
@@ -724,7 +1067,8 @@
         if (e.key === 'F2') { e.preventDefault(); el.search.focus(); el.search.select(); }
         if (e.key === 'F4') { e.preventDefault(); openPay(); }
         if (e.key === 'Escape') {
-            if (!el.payModal.classList.contains('hidden')) closePay();
+            if (!el.optModal.classList.contains('hidden')) closeOptions();
+            else if (!el.payModal.classList.contains('hidden')) closePay();
             else if (!el.heldModal.classList.contains('hidden')) closeHeld();
             else if (cart.length && confirm('Vider le panier ?')) { cart = []; renderCart(); }
         }
@@ -756,8 +1100,49 @@
         }
     });
 
+    async function refreshSnapshot() {
+        if (!window.GreenPosOffline || !navigator.onLine) return;
+        try {
+            const res = await fetch(cfg.snapshotUrl, { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) return;
+            const data = await res.json();
+            await window.GreenPosOffline.saveSnapshot(data);
+            if (Array.isArray(data.payment_modes) && data.payment_modes.length) {
+                paymentModes = data.payment_modes.map((mode) => ({
+                    id: mode.id,
+                    name: mode.name,
+                    method: mode.metadata?.method || 'cash',
+                    timing: mode.metadata?.timing || 'immediate',
+                    required_fields: mode.metadata?.required_fields || [],
+                }));
+            }
+        } catch (e) {}
+    }
+
+    async function flushOffline() {
+        if (!window.GreenPosOffline || !navigator.onLine) return;
+        const count = await window.GreenPosOffline.count();
+        if (!count) {
+            setOffline(false);
+            return;
+        }
+        const result = await window.GreenPosOffline.flush(cfg.syncUrl, cfg.csrf);
+        const failed = (result.results || []).filter((row) => row && row.ok === false);
+        if (failed.length) toast(failed[0].message || 'Sync partielle', false);
+        else if ((result.results || []).length) toast('File hors ligne synchronisée');
+        setOffline(!navigator.onLine || (await window.GreenPosOffline.count()) > 0);
+    }
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+    window.addEventListener('online', () => { refreshSnapshot().then(flushOffline); });
+    window.addEventListener('offline', () => setOffline(true));
+
     renderProducts(products);
     renderCart();
+    syncDelivery();
+    refreshSnapshot().then(flushOffline);
 })();
 </script>
 </body>

@@ -13,3 +13,4 @@ Artisan::command('inspire', function () {
 Schedule::command(ProcessSaasBillingCommand::class)->dailyAt('02:15');
 Schedule::command('greenpos:system-backups --health')->dailyAt('03:00');
 Schedule::command(ProcessSystemBackupsCommand::class)->hourly();
+Schedule::command('tasks:run-automation')->hourly();

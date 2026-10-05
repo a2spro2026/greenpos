@@ -183,6 +183,8 @@ class SettingController extends Controller
             ['key' => 'pos', 'label' => 'POS & Caisse', 'desc' => 'Terminal et périphériques', 'route' => 'settings.section', 'params' => ['section' => 'pos'], 'icon' => 'pos'],
             ['key' => 'invoicing', 'label' => 'Facturation', 'desc' => 'PDF, délais, mentions', 'route' => 'settings.section', 'params' => ['section' => 'invoicing'], 'icon' => 'invoice'],
             ['key' => 'payments', 'label' => 'Paiements', 'desc' => 'Modes et arrondi', 'route' => 'settings.section', 'params' => ['section' => 'payments'], 'icon' => 'pay'],
+            ['key' => 'lists', 'label' => 'Listes personnalisées', 'desc' => 'Tickets, services, paiements, taxes, remises, dépenses', 'route' => 'settings.lists.index', 'icon' => 'list'],
+            ['key' => 'platforms', 'label' => 'Plateformes livraison', 'desc' => 'Sync vers les modes de service', 'route' => 'settings.delivery-platforms.index', 'icon' => 'truck'],
             ['key' => 'notifications', 'label' => 'Notifications', 'desc' => 'Email, SMS, alertes', 'route' => 'settings.section', 'params' => ['section' => 'notifications'], 'icon' => 'bell'],
             ['key' => 'security', 'label' => 'Sécurité', 'desc' => 'Session et mots de passe', 'route' => 'settings.section', 'params' => ['section' => 'security'], 'icon' => 'shield'],
             ['key' => 'backup', 'label' => 'Sauvegarde', 'desc' => 'Backup et rétention', 'route' => 'settings.section', 'params' => ['section' => 'backup'], 'icon' => 'backup'],

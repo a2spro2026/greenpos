@@ -120,6 +120,18 @@ Route::middleware(['workspace', 'audit'])->group(function () {
         return view('home', compact('stats', 'activity'));
     })->name('home');
 
+    Route::get('/products/options', [\App\Http\Controllers\ProductOptionController::class, 'index'])->name('products.options.index');
+    Route::get('/products/options/create', [\App\Http\Controllers\ProductOptionController::class, 'create'])->name('products.options.create');
+    Route::post('/products/options', [\App\Http\Controllers\ProductOptionController::class, 'store'])->name('products.options.store');
+    Route::get('/products/options/{option}/edit', [\App\Http\Controllers\ProductOptionController::class, 'edit'])->name('products.options.edit');
+    Route::put('/products/options/{option}', [\App\Http\Controllers\ProductOptionController::class, 'update'])->name('products.options.update');
+    Route::get('/products/unites', [\App\Http\Controllers\MeasureUnitController::class, 'index'])->name('products.units.index');
+    Route::post('/products/unites', [\App\Http\Controllers\MeasureUnitController::class, 'store'])->name('products.units.store');
+    Route::put('/products/unites/{measure_unit}', [\App\Http\Controllers\MeasureUnitController::class, 'update'])->name('products.units.update');
+    Route::get('/products/sous-categories', [\App\Http\Controllers\SubcategoryController::class, 'index'])->name('products.subcategories.index');
+    Route::post('/products/sous-categories', [\App\Http\Controllers\SubcategoryController::class, 'store'])->name('products.subcategories.store');
+    Route::put('/products/sous-categories/{subcategory}', [\App\Http\Controllers\SubcategoryController::class, 'update'])->name('products.subcategories.update');
+
     Route::get('/products/export', [ProductController::class, 'export'])->name('products.export');
     Route::get('/products/import', [ProductController::class, 'importForm'])->name('products.import.form');
     Route::post('/products/import', [ProductController::class, 'import'])->name('products.import');
@@ -441,4 +453,6 @@ Route::middleware(['workspace', 'audit'])->group(function () {
     Route::post('/audit/purge', [AuditController::class, 'purge'])->name('audit.purge.run');
     Route::get('/audit/{audit}', [AuditController::class, 'show'])->name('audit.show');
     Route::get('/audit/{audit}/print', [AuditController::class, 'printOne'])->name('audit.print-one');
+
+    require __DIR__.'/parity.php';
 });

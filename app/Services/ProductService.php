@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\MeasureUnit;
 use App\Models\Product;
+use App\Models\ProductOption;
 use App\Models\ProductChangeLog;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
@@ -18,6 +20,9 @@ class ProductService
     {
         return DB::transaction(function () use ($data, $image, $variants, $storeIds) {
             $company = Workspace::company();
+            $optionIds = $data['option_ids'] ?? null;
+            unset($data['option_ids']);
+            $data = $this->applyMeasureUnit($company->id, $data);
             $data['company_id'] = $company->id;
             $data['slug'] = $this->uniqueSlug($company->id, $data['name']);
             $data['sku'] = $data['sku'] ?: $this->generateSku($company->id);
@@ -31,6 +36,9 @@ class ProductService
             $product = Product::query()->create($data);
             $this->syncVariants($product, $variants);
             $this->syncStores($product, $storeIds);
+            if (is_array($optionIds)) {
+                $this->syncOptions($product, $optionIds);
+            }
 
             if (! empty($data['image_path'])) {
                 ProductImage::query()->create([
@@ -51,6 +59,9 @@ class ProductService
     {
         return DB::transaction(function () use ($product, $data, $image, $variants, $storeIds) {
             $before = $product->toArray();
+            $optionIds = array_key_exists('option_ids', $data) ? ($data['option_ids'] ?? []) : null;
+            unset($data['option_ids']);
+            $data = $this->applyMeasureUnit($product->company_id, $data);
             $data['updated_by'] = Workspace::user()?->id;
 
             if (isset($data['name']) && $data['name'] !== $product->name) {
@@ -71,6 +82,9 @@ class ProductService
             $product->update($data);
             $this->syncVariants($product, $variants);
             $this->syncStores($product, $storeIds);
+            if (is_array($optionIds)) {
+                $this->syncOptions($product, $optionIds);
+            }
             $this->log($product, 'updated', $before, $product->fresh()->toArray(), 'Produit modifié');
 
             return $product->fresh(['category', 'brand', 'supplier', 'variants', 'images']);
@@ -179,6 +193,32 @@ class ProductService
         $product->variants()->whereNotIn('id', $keepIds)->each(function (ProductVariant $variant) {
             $variant->delete();
         });
+    }
+
+    protected function syncOptions(Product $product, array $optionIds): void
+    {
+        $ids = ProductOption::query()
+            ->where('company_id', $product->company_id)
+            ->whereIn('id', array_map('intval', $optionIds))
+            ->pluck('id')
+            ->all();
+        $product->options()->sync($ids);
+    }
+
+    protected function applyMeasureUnit(int $companyId, array $data): array
+    {
+        if (empty($data['measure_unit_id'])) {
+            return $data;
+        }
+        $unit = MeasureUnit::query()->where('company_id', $companyId)->whereKey($data['measure_unit_id'])->first();
+        if (! $unit) {
+            unset($data['measure_unit_id']);
+
+            return $data;
+        }
+        $data['unit'] = $unit->code;
+
+        return $data;
     }
 
     protected function syncStores(Product $product, array $storeIds): void

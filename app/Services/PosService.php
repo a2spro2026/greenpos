@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Customer;
+use App\Models\CustomList;
+use App\Models\OptionVariant;
 use App\Models\PosPayment;
 use App\Models\PosSale;
 use App\Models\PosSaleLine;
@@ -15,8 +17,10 @@ use Illuminate\Validation\ValidationException;
 
 class PosService
 {
-    public function __construct(private StockService $stock)
-    {
+    public function __construct(
+        private StockService $stock,
+        private SalePaymentWorkflowService $workflow,
+    ) {
     }
 
     public function currentOpenSession(?int $storeId = null): ?PosSession
@@ -66,11 +70,12 @@ class PosService
 
         $cashSales = (float) $session->sales()
             ->where('status', 'completed')
-            ->whereHas('payments', fn ($q) => $q->where('method', 'cash'))
             ->with('payments')
             ->get()
             ->sum(function (PosSale $sale) {
-                return $sale->payments->where('method', 'cash')->sum('amount');
+                return $sale->payments
+                    ->filter(fn ($payment) => $payment->method === 'cash' && $this->workflow->countsAsSettled($payment))
+                    ->sum('amount');
             });
 
         $expected = (float) $session->opening_float + $cashSales;
@@ -92,7 +97,7 @@ class PosService
         return $session->fresh();
     }
 
-    public function completeSale(array $items, array $payments, ?int $customerId = null, ?string $notes = null, ?int $sessionId = null): PosSale
+    public function completeSale(array $items, array $payments, ?int $customerId = null, ?string $notes = null, ?int $sessionId = null, array $context = []): PosSale
     {
         $company = Workspace::company();
         $store = Workspace::store();
@@ -112,12 +117,35 @@ class PosService
             throw ValidationException::withMessages(['items' => 'Le panier est vide.']);
         }
 
-        return DB::transaction(function () use ($company, $store, $session, $items, $payments, $customerId, $notes) {
-            $computed = $this->computeLines($company->id, $items);
-            $paymentTotal = collect($payments)->sum(fn ($p) => (float) ($p['amount'] ?? 0));
+        return DB::transaction(function () use ($company, $store, $session, $items, $payments, $customerId, $notes, $context) {
+            if (! empty($context['client_uuid'])) {
+                $existing = PosSale::query()->where('client_uuid', $context['client_uuid'])->first();
+                if ($existing) {
+                    return $existing->fresh(['lines', 'payments', 'customer', 'cashier']);
+                }
+            }
 
-            if (round($paymentTotal, 2) < round($computed['total_ttc'], 2)) {
-                throw ValidationException::withMessages(['payments' => 'Paiement insuffisant.']);
+            $computed = $this->computeLines($company->id, $items);
+            $resolved = [];
+            foreach ($payments as $payment) {
+                $row = $this->workflow->resolve($company->id, $payment);
+                if ($row['amount'] <= 0) {
+                    continue;
+                }
+                $resolved[] = $row;
+            }
+            $this->workflow->assertCovers($computed['total_ttc'], $resolved);
+
+            $serviceList = null;
+            if (! empty($context['service_mode_list_id'])) {
+                $serviceList = CustomList::query()
+                    ->forCompany($company->id)
+                    ->where('type', 'mode_de_service')
+                    ->whereKey($context['service_mode_list_id'])
+                    ->first();
+            }
+            if ($serviceList && $serviceList->meta('requires_delivery_agent') && empty($context['delivery_platform_id'])) {
+                throw ValidationException::withMessages(['delivery_platform_id' => 'Ce mode de service exige un livreur ou une plateforme.']);
             }
 
             $seq = PosSale::query()->forCompany($company->id)->count() + 1;
@@ -128,6 +156,16 @@ class PosService
                 'customer_id' => $customerId,
                 'cashier_id' => Workspace::user()?->id,
                 'number' => 'TK-'.now()->format('Ymd').'-'.str_pad((string) $seq, 4, '0', STR_PAD_LEFT),
+                'client_uuid' => $context['client_uuid'] ?? null,
+                'ticket_name' => $context['ticket_name'] ?? null,
+                'ticket_group' => $context['ticket_group'] ?? null,
+                'service_mode' => $serviceList?->meta('operational_mode') ?: ($context['service_mode'] ?? null),
+                'service_mode_list_id' => $serviceList?->id,
+                'predefined_ticket_id' => $context['predefined_ticket_id'] ?? null,
+                'delivery_platform_id' => $context['delivery_platform_id'] ?? null,
+                'appointment_at' => $context['appointment_at'] ?? null,
+                'pickup_date' => $context['pickup_date'] ?? null,
+                'delivery_address' => $context['delivery_address'] ?? null,
                 'status' => 'completed',
                 'subtotal_ht' => $computed['subtotal_ht'],
                 'tax_total' => $computed['tax_total'],
@@ -144,6 +182,7 @@ class PosService
                     'product_id' => $line['product_id'],
                     'product_name' => $line['product_name'],
                     'sku' => $line['sku'],
+                    'options_payload' => $line['options_payload'] ?? null,
                     'quantity' => $line['quantity'],
                     'unit_price' => $line['unit_price'],
                     'discount_percent' => $line['discount_percent'],
@@ -168,27 +207,39 @@ class PosService
                 }
             }
 
-            foreach ($payments as $payment) {
-                $amount = (float) ($payment['amount'] ?? 0);
-                if ($amount <= 0) {
-                    continue;
-                }
-                $method = $payment['method'] ?? 'cash';
-                if (! array_key_exists($method, PosPayment::METHODS)) {
-                    throw ValidationException::withMessages(['payments' => 'Mode de paiement invalide.']);
-                }
-                $tendered = isset($payment['tendered']) ? (float) $payment['tendered'] : null;
-                PosPayment::query()->create([
+            foreach ($resolved as $payment) {
+                $created = PosPayment::query()->create([
                     'pos_sale_id' => $sale->id,
-                    'method' => $method,
-                    'amount' => $amount,
-                    'tendered' => $tendered,
-                    'change_amount' => $method === 'cash' && $tendered !== null
-                        ? max(0, round($tendered - $amount, 2))
-                        : null,
-                    'reference' => $payment['reference'] ?? null,
+                    'method' => $payment['method'],
+                    'amount' => $payment['amount'],
+                    'tendered' => $payment['tendered'],
+                    'change_amount' => $payment['change_amount'],
+                    'reference' => $payment['reference'],
+                    'custom_list_id' => $payment['custom_list_id'],
+                    'is_deferred' => $payment['is_deferred'],
+                    'transfer_mode' => $payment['transfer_mode'],
+                    'transaction_number' => $payment['transaction_number'],
+                    'piece_number' => $payment['piece_number'],
+                    'bank_name' => $payment['bank_name'],
+                    'issue_date' => $payment['issue_date'],
+                    'due_date' => $payment['due_date'],
+                    'confirmed_at' => $payment['confirmed_at'],
+                    'collection_status' => $payment['collection_status'],
+                    'received_amount' => $payment['received_amount'],
+                    'scheduled_for' => $payment['scheduled_for'],
                 ]);
+                $this->workflow->recordHistory(
+                    $company->id,
+                    $payment['is_deferred'] ? 'scheduled' : 'confirmed',
+                    $payment['amount'],
+                    null,
+                    $created->id,
+                    null,
+                    $payment['scheduled_for']
+                );
             }
+
+            $this->workflow->recalculatePos($sale->fresh());
 
             if ($customerId) {
                 $customer = Customer::query()->forCompany($company->id)->whereKey($customerId)->first();
@@ -326,7 +377,7 @@ class PosService
                         ->orWhere('barcode', $q);
                 });
             })
-            ->with('category')
+            ->with(['category', 'options.variants'])
             ->orderBy('name')
             ->limit($limit)
             ->get();
@@ -354,6 +405,17 @@ class PosService
                 'category_id' => $product->category_id,
                 'category' => $product->category?->name,
                 'image' => $product->imageUrl(),
+                'options' => $product->options->map(fn ($option) => [
+                    'id' => $option->id,
+                    'name' => $option->name,
+                    'selection_mode' => $option->selection_mode,
+                    'is_required' => (bool) $option->is_required,
+                    'variants' => $option->variants->where('is_active', true)->map(fn ($variant) => [
+                        'id' => $variant->id,
+                        'name' => $variant->name,
+                        'extra_price' => (float) $variant->extra_price,
+                    ])->values(),
+                ])->values(),
             ];
         })->all();
     }
@@ -374,7 +436,9 @@ class PosService
             if ($qty <= 0) {
                 continue;
             }
-            $price = isset($item['unit_price']) ? (float) $item['unit_price'] : (float) $product->sale_price;
+            [$optionExtra, $optionPayload] = $this->optionExtras($product, $item['option_variant_ids'] ?? []);
+            $basePrice = isset($item['unit_price']) ? (float) $item['unit_price'] : (float) $product->sale_price;
+            $price = $basePrice + $optionExtra;
             $discount = (float) ($item['discount_percent'] ?? 0);
             $tax = isset($item['tax_rate']) ? (float) $item['tax_rate'] : (float) $product->tax_rate;
 
@@ -383,10 +447,12 @@ class PosService
             $net = $gross - $discAmount;
             $taxAmount = $net * ($tax / 100);
 
+            $optionNames = collect($optionPayload)->pluck('name')->filter()->implode(', ');
             $lines[] = [
                 'product_id' => $product->id,
-                'product_name' => $product->name,
+                'product_name' => $optionNames !== '' ? $product->name.' ('.$optionNames.')' : $product->name,
                 'sku' => $product->sku,
+                'options_payload' => $optionPayload,
                 'quantity' => $qty,
                 'unit_price' => $price,
                 'discount_percent' => $discount,
@@ -412,5 +478,55 @@ class PosService
             'discount_total' => round($discountTotal, 2),
             'total_ttc' => round($subtotal + $taxTotal, 2),
         ];
+    }
+
+    /**
+     * @param  array<int, mixed>  $variantIds
+     * @return array{0: float, 1: list<array<string, mixed>>}
+     */
+    protected function optionExtras(Product $product, array $variantIds): array
+    {
+        $ids = array_values(array_filter(array_map('intval', $variantIds)));
+        if ($ids === []) {
+            return [0.0, []];
+        }
+
+        $attached = $product->options()->pluck('product_options.id');
+        $variants = OptionVariant::query()->with('option')->whereIn('id', $ids)->get();
+        $payload = [];
+        $extra = 0.0;
+        $byOption = [];
+
+        foreach ($variants as $variant) {
+            if (! $variant->option || (int) $variant->option->company_id !== (int) $product->company_id) {
+                throw ValidationException::withMessages(['items' => 'Option inconnue.']);
+            }
+            if (! $attached->contains($variant->product_option_id)) {
+                throw ValidationException::withMessages(['items' => 'Cette option n\'est pas liée au produit.']);
+            }
+            if (! $variant->is_active || ! $variant->option->is_active) {
+                throw ValidationException::withMessages(['items' => 'Option inactive.']);
+            }
+            $byOption[$variant->product_option_id][] = $variant;
+        }
+
+        foreach ($byOption as $optionId => $chosen) {
+            $option = $chosen[0]->option;
+            if ($option->selection_mode === 'fixed' && count($chosen) > 1) {
+                throw ValidationException::withMessages(['items' => $option->name.' n\'accepte qu\'un seul choix.']);
+            }
+            foreach ($chosen as $variant) {
+                $extra += (float) $variant->extra_price;
+                $payload[] = [
+                    'option_id' => $optionId,
+                    'option' => $option->name,
+                    'id' => $variant->id,
+                    'name' => $variant->name,
+                    'extra_price' => (float) $variant->extra_price,
+                ];
+            }
+        }
+
+        return [round($extra, 2), $payload];
     }
 }

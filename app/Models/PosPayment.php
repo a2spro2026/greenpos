@@ -11,6 +11,10 @@ class PosPayment extends Model
         'cash' => 'Espèces',
         'card' => 'Carte bancaire',
         'mobile' => 'Paiement mobile',
+        'bank_transfer' => 'Virement',
+        'check' => 'Chèque',
+        'credit' => 'Crédit',
+        'other' => 'Autre',
     ];
 
     protected $fillable = [
@@ -20,6 +24,18 @@ class PosPayment extends Model
         'tendered',
         'change_amount',
         'reference',
+        'custom_list_id',
+        'is_deferred',
+        'transfer_mode',
+        'transaction_number',
+        'piece_number',
+        'bank_name',
+        'issue_date',
+        'due_date',
+        'confirmed_at',
+        'collection_status',
+        'received_amount',
+        'scheduled_for',
     ];
 
     protected function casts(): array
@@ -28,12 +44,28 @@ class PosPayment extends Model
             'amount' => 'decimal:2',
             'tendered' => 'decimal:2',
             'change_amount' => 'decimal:2',
+            'is_deferred' => 'boolean',
+            'issue_date' => 'date',
+            'due_date' => 'date',
+            'confirmed_at' => 'datetime',
+            'received_amount' => 'decimal:2',
+            'scheduled_for' => 'datetime',
         ];
     }
 
     public function sale(): BelongsTo
     {
         return $this->belongsTo(PosSale::class, 'pos_sale_id');
+    }
+
+    public function customList(): BelongsTo
+    {
+        return $this->belongsTo(CustomList::class);
+    }
+
+    public function collections(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(PaymentCollection::class)->latest();
     }
 
     public function methodLabel(): string
