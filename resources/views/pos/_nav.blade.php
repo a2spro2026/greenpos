@@ -6,6 +6,7 @@
         ['route' => 'pos.sessions.index', 'label' => 'Sessions', 'match' => 'pos.sessions.*'],
         ['route' => 'pos.journal', 'label' => 'Journal de caisse', 'match' => 'pos.journal*'],
         ['route' => 'pos.collections', 'label' => 'À encaisser', 'match' => 'pos.collections'],
+        ['route' => 'pos.sync-conflicts.index', 'label' => 'Conflits synchro', 'match' => 'pos.sync-conflicts.*'],
         ['route' => 'pos.printers.index', 'label' => 'Imprimantes', 'match' => 'pos.printers.*'],
     ];
 @endphp

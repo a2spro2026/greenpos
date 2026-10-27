@@ -102,4 +102,67 @@ class RimalPosViewsTest extends RimalPosTest
         $this->get(route('reports.documents'))->assertOk()->assertSee('BL-'.$order->number);
         $this->get(route('reports.documents', ['type' => 'ticket']))->assertOk()->assertDontSee('BL-'.$order->number);
     }
+
+    public function test_phase5_offline_sync_idempotent_conflicts_and_terminal(): void
+    {
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+        $ticket = ['client_uuid' => $uuid, 'offline_at' => now()->subMinutes(5)->toIso8601String(),
+            'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'payments' => [['method' => 'cheque', 'amount' => 120, 'reference' => 'CHQ-9', 'due_date' => now()->toDateString()]],
+            'ticket_discount_percent' => 0, 'ticket_name' => 'Hors ligne 1'];
+
+        $r1 = $this->postJson(route('pos.offline.sync'), ['sales' => [$ticket]])->assertOk()->json('results.0');
+        $this->assertTrue($r1['ok']);
+        $r2 = $this->postJson(route('pos.offline.sync'), ['sales' => [$ticket]])->assertOk()->json('results.0');
+        $this->assertTrue($r2['ok']);
+        $this->assertTrue($r2['duplicate']);
+        $this->assertSame(1, \App\Models\PosSale::query()->where('client_uuid', $uuid)->count());
+        $sale = \App\Models\PosSale::query()->where('client_uuid', $uuid)->first();
+        $this->assertSame('CHQ-9', $sale->payments->first()->reference);
+        $this->assertStringContainsString('Saisi hors ligne', (string) $sale->notes);
+
+        // Conflit : stock insuffisant -> consigné, jamais perdu
+        $bad = ['client_uuid' => (string) \Illuminate\Support\Str::uuid(), 'items' => [['product_id' => $this->product->id, 'quantity' => 50]], 'payments' => [['method' => 'cash', 'amount' => 6000]]];
+        $r3 = $this->postJson(route('pos.offline.sync'), ['sales' => [$bad]])->assertOk()->json('results.0');
+        $this->assertFalse($r3['ok']);
+        $this->assertTrue($r3['conflict']);
+        $conflict = \App\Models\PosSyncConflict::query()->where('client_uuid', $bad['client_uuid'])->firstOrFail();
+        $this->assertSame('open', $conflict->status);
+        $this->get(route('pos.sync-conflicts.index'))->assertOk()->assertSee($bad['client_uuid']);
+
+        // Réapprovisionnement puis « Réessayer » -> synchronisé
+        app(\App\Services\StockService::class)->applyMovement(['store_id' => $this->store->id, 'product_id' => $this->product->id, 'type' => 'in', 'quantity' => 100, 'moved_at' => now()]);
+        $this->post(route('pos.sync-conflicts.retry', $conflict))->assertRedirect();
+        $this->assertSame('synced', $conflict->fresh()->status);
+        $this->assertNotNull($conflict->fresh()->pos_sale_id);
+
+        // Classement manuel
+        $bad2 = ['client_uuid' => (string) \Illuminate\Support\Str::uuid(), 'items' => [['product_id' => 999999, 'quantity' => 1]], 'payments' => [['method' => 'cash', 'amount' => 10]]];
+        $this->postJson(route('pos.offline.sync'), ['sales' => [$bad2]])->assertOk()->assertJsonPath('results.0.conflict', true);
+        $c2 = \App\Models\PosSyncConflict::query()->where('client_uuid', $bad2['client_uuid'])->firstOrFail();
+        $this->post(route('pos.sync-conflicts.resolve', $c2), ['note' => 'produit supprimé'])->assertRedirect();
+        $this->assertSame('resolved', $c2->fresh()->status);
+
+        // Caisse fermée : erreur transitoire, pas de conflit
+        \App\Models\PosSession::query()->update(['status' => 'closed', 'closed_at' => now()]);
+        $t4 = ['client_uuid' => (string) \Illuminate\Support\Str::uuid(), 'items' => [['product_id' => $this->product->id, 'quantity' => 1]], 'payments' => [['method' => 'cash', 'amount' => 120]]];
+        $r4 = $this->postJson(route('pos.offline.sync'), ['sales' => [$t4]])->assertOk()->json('results.0');
+        $this->assertTrue($r4['retry'] ?? false);
+        $this->assertSame(0, \App\Models\PosSyncConflict::query()->where('client_uuid', $t4['client_uuid'])->count());
+
+        $snap = $this->getJson(route('pos.offline.snapshot'))->assertOk();
+        $this->assertNotEmpty($snap->json('version'));
+        $this->assertArrayHasKey('delivery_platforms', $snap->json());
+        $this->assertArrayHasKey('effet', $snap->json('payment_methods'));
+    }
+
+    public function test_phase5_terminal_has_offline_integration(): void
+    {
+        $html = $this->get(route('pos.terminal'))->assertOk()->getContent();
+        file_put_contents(sys_get_temp_dir().'/rimal_terminal.html', $html);
+        $this->assertStringContainsString('pos-net-status', $html);
+        $this->assertStringContainsString('/sw.js?v=', $html);
+        $this->assertStringContainsString('js/pos-offline.js?v=', $html);
+        $this->assertLessThan(strpos($html, 'const Offline = window.GreenPosOffline'), strpos($html, 'js/pos-offline.js?v='));
+    }
 }

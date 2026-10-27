@@ -165,16 +165,21 @@ class PosController extends Controller
     {
         $this->authorize('pos.sell');
         $company = Workspace::company();
-        $this->lists->ensureDefaults($company);
 
         return response()->json([
+            'version' => \App\Support\RimalOffline::version(),
             'saved_at' => now()->toIso8601String(),
+            'company_id' => $company->id,
+            'store_id' => Workspace::store()?->id,
             'limits' => [
                 'guest_login' => false,
-                'reason' => 'La session Blade reste requise. Le catalogue et la file de ventes tiennent dans IndexedDB, pas un mode invité hors ligne.',
+                'reason' => 'La session reste requise. Le catalogue et la file de tickets sont stockés dans IndexedDB ; le stock est revérifié à la synchronisation.',
             ],
-            'products' => $this->pos->catalog(null, null, 500),
+            'products' => $this->pos->catalog(null, null, 1000),
             'categories' => Category::query()->where('company_id', $company->id)->orderBy('name')->get(['id', 'name']),
+            'payment_methods' => PosPayment::METHODS,
+            'instrument_methods' => PosPayment::INSTRUMENT_METHODS,
+            'delivery_platforms' => \App\Models\DeliveryPlatform::query()->where('company_id', $company->id)->get(),
             'payment_modes' => $this->lists->forType($company->id, 'mode_de_paiement'),
             'service_modes' => $this->lists->forType($company->id, 'mode_de_service'),
             'tickets' => $this->lists->forType($company->id, 'tickets_predefinis'),
@@ -183,12 +188,13 @@ class PosController extends Controller
         ]);
     }
 
-    public function offlineSync(Request $request): JsonResponse
+    public function offlineSync(Request $request, \App\Services\PosOfflineSyncService $sync): JsonResponse
     {
         $this->authorize('pos.sell');
         $sales = $request->validate([
             'sales' => ['required', 'array', 'min:1', 'max:50'],
             'sales.*.client_uuid' => ['required', 'uuid'],
+            'sales.*.offline_at' => ['nullable', 'date'],
             'sales.*.items' => ['required', 'array', 'min:1'],
             'sales.*.items.*.product_id' => ['required', 'integer'],
             'sales.*.items.*.quantity' => ['required', 'numeric', 'min:0.001'],
@@ -196,42 +202,31 @@ class PosController extends Controller
             'sales.*.items.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'sales.*.items.*.option_variant_ids' => ['nullable', 'array'],
             'sales.*.payments' => ['required', 'array', 'min:1'],
+            'sales.*.payments.*.method' => ['required', 'string', 'max:40'],
+            'sales.*.payments.*.amount' => ['required', 'numeric', 'min:0'],
             'sales.*.customer_id' => ['nullable', 'integer'],
             'sales.*.notes' => ['nullable', 'string', 'max:500'],
+            'sales.*.service_mode' => ['nullable', 'in:dine_in,takeaway,delivery'],
+            'sales.*.employee_id' => ['nullable', 'integer'],
+            'sales.*.delivery_agent_id' => ['nullable', 'integer'],
+            'sales.*.ticket_discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'sales.*.pos_table_id' => ['nullable', 'integer'],
             'sales.*.service_mode_list_id' => ['nullable', 'integer'],
             'sales.*.ticket_name' => ['nullable', 'string', 'max:255'],
+            'sales.*.ticket_group' => ['nullable', 'string', 'max:255'],
+            'sales.*.predefined_ticket_id' => ['nullable', 'integer'],
             'sales.*.delivery_platform_id' => ['nullable', 'integer'],
+            'sales.*.appointment_at' => ['nullable', 'date'],
+            'sales.*.pickup_date' => ['nullable', 'date'],
+            'sales.*.delivery_address' => ['nullable', 'string', 'max:500'],
         ])['sales'];
 
+        $raw = $request->input('sales', []);
         $results = [];
-        foreach ($sales as $payload) {
-            try {
-                $sale = $this->pos->completeSale(
-                    $payload['items'],
-                    $payload['payments'],
-                    $payload['customer_id'] ?? null,
-                    $payload['notes'] ?? null,
-                    null,
-                    [
-                        'client_uuid' => $payload['client_uuid'],
-                        'service_mode_list_id' => $payload['service_mode_list_id'] ?? null,
-                        'ticket_name' => $payload['ticket_name'] ?? null,
-                        'delivery_platform_id' => $payload['delivery_platform_id'] ?? null,
-                        'appointment_at' => $payload['appointment_at'] ?? null,
-                        'pickup_date' => $payload['pickup_date'] ?? null,
-                        'delivery_address' => $payload['delivery_address'] ?? null,
-                        'ticket_group' => $payload['ticket_group'] ?? null,
-                        'predefined_ticket_id' => $payload['predefined_ticket_id'] ?? null,
-                    ]
-                );
-                $results[] = ['client_uuid' => $payload['client_uuid'], 'ok' => true, 'number' => $sale->number, 'sale_id' => $sale->id];
-            } catch (\Illuminate\Validation\ValidationException $e) {
-                $results[] = [
-                    'client_uuid' => $payload['client_uuid'],
-                    'ok' => false,
-                    'message' => collect($e->errors())->flatten()->first(),
-                ];
-            }
+        foreach ($sales as $i => $payload) {
+            // Conserve les champs de paiement (numéro, échéance…) non listés dans les règles.
+            $payload['payments'] = $raw[$i]['payments'] ?? $payload['payments'];
+            $results[] = $sync->syncOne($payload);
         }
 
         return response()->json(['results' => $results]);

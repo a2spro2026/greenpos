@@ -57,7 +57,9 @@
      data-resume-base="{{ url('/pos/held') }}"
      data-csrf="{{ csrf_token() }}"
      data-session-open="{{ $session ? '1' : '0' }}"
-     data-can-hold="{{ $canHold ? '1' : '0' }}">
+     data-can-hold="{{ $canHold ? '1' : '0' }}"
+     data-snapshot-url="{{ route('pos.offline.snapshot') }}"
+     data-sync-url="{{ route('pos.offline.sync') }}">
 
     {{-- LEFT: catalog --}}
     <section class="flex min-h-0 flex-col border-b border-slate-200 dark:border-white/10 lg:border-b-0 lg:border-r">
@@ -80,6 +82,9 @@
             @else
                 <a href="{{ route('pos.sessions.close.form', $session) }}" class="rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200 dark:bg-white/5 dark:text-white dark:ring-white/10 dark:hover:bg-white/10">Clôturer</a>
             @endif
+            <a href="{{ route('pos.sync-conflicts.index') }}" id="pos-net-status" title="État réseau / tickets hors ligne en attente" class="inline-flex h-10 items-center gap-1 rounded-xl bg-emerald-50 px-3 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20">
+                <span id="pos-net-dot" class="h-2 w-2 rounded-full bg-emerald-500"></span><span id="pos-net-label">En ligne</span>
+            </a>
             <button type="button" id="gp-theme-toggle" data-theme-toggle class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200 dark:bg-white/5 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-white/10" aria-label="Changer le thème" title="Thème clair / sombre">
                 <svg data-theme-icon="light" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                 <svg data-theme-icon="dark" class="hidden h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
@@ -322,6 +327,8 @@
     </div>
 </div>
 
+<script src="{{ asset('js/pos-offline.js') }}?v={{ \App\Support\RimalOffline::version() }}"></script>
+
 <div id="pos-toast" class="pointer-events-none fixed bottom-6 left-1/2 z-[60] hidden -translate-x-1/2 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-bold text-slate-950 shadow-xl pos-toast"></div>
 
 <script>
@@ -335,7 +342,11 @@
         csrf: root.dataset.csrf,
         sessionOpen: root.dataset.sessionOpen === '1',
         canHold: root.dataset.canHold === '1',
+        snapshotUrl: root.dataset.snapshotUrl,
+        syncUrl: root.dataset.syncUrl,
     };
+    const Offline = window.GreenPosOffline || null;
+    let checkoutUuid = null;
 
     const initialCatalog = @json($catalog);
     const instrumentMethods = @json($instrumentMethods);
@@ -501,9 +512,18 @@
         const url = new URL(cfg.catalogUrl, window.location.origin);
         if (q) url.searchParams.set('q', q);
         if (categoryId) url.searchParams.set('category_id', categoryId);
-        const res = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
-        const data = await res.json();
-        products = data.products || [];
+        try {
+            const res = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await res.json();
+            products = data.products || [];
+        } catch (e) {
+            // Hors ligne : catalogue du dernier instantané IndexedDB, filtré localement.
+            const all = Offline ? await Offline.products() : [];
+            const needle = (q || '').toLowerCase();
+            products = (all.length ? all : initialCatalog).filter((p) =>
+                (!categoryId || String(p.category_id) === String(categoryId))
+                && (!needle || (p.name || '').toLowerCase().includes(needle) || p.sku === q || p.barcode === q));
+        }
         renderProducts(products);
     }
 
@@ -625,6 +645,14 @@
             ticket_name: document.getElementById('pos-ticket-name')?.value || null,
             pos_table_id: document.getElementById('pos-table')?.value || null,
         };
+        // UUID client stable pour ce ticket : un double envoi ou une resynchro ne crée jamais de doublon.
+        if (!checkoutUuid && Offline) checkoutUuid = Offline.uuid();
+        if (checkoutUuid) body.client_uuid = checkoutUuid;
+
+        if (Offline && !navigator.onLine) {
+            await queueOffline(body);
+            return;
+        }
 
         document.getElementById('pay-confirm').disabled = true;
         try {
@@ -647,6 +675,7 @@
             el.notes.value = '';
             resetTicketMeta();
             heldSaleId = null;
+            checkoutUuid = null;
             closePay();
             toast('Ticket ' + data.number + ' validé');
             if (data.receipt_url) {
@@ -657,6 +686,11 @@
             }
             fetchCatalog(el.search.value.trim());
         } catch (e) {
+            if (Offline && e instanceof TypeError) {
+                // Réseau coupé pendant l'envoi : le ticket part dans la file hors ligne (même UUID).
+                await queueOffline(body);
+                return;
+            }
             el.payError.textContent = e.message;
             el.payError.classList.remove('hidden');
         } finally {
@@ -922,25 +956,89 @@
         }
     });
 
+    async function queueOffline(body) {
+        const row = Object.assign({}, body, { offline_at: new Date().toISOString() });
+        await Offline.enqueue(row);
+        cart = [];
+        renderCart();
+        el.notes.value = '';
+        resetTicketMeta();
+        heldSaleId = null;
+        checkoutUuid = null;
+        closePay();
+        toast('Hors ligne : ticket enregistré localement, synchronisation automatique au retour du réseau');
+        refreshNetStatus();
+    }
+
+    async function refreshNetStatus() {
+        const label = document.getElementById('pos-net-label');
+        const dot = document.getElementById('pos-net-dot');
+        const box = document.getElementById('pos-net-status');
+        if (!label) return;
+        const n = Offline ? await Offline.count().catch(() => 0) : 0;
+        const online = navigator.onLine;
+        label.textContent = (online ? 'En ligne' : 'Hors ligne') + (n ? ' · ' + n + ' en attente' : '');
+        dot.className = 'h-2 w-2 rounded-full ' + (online ? (n ? 'bg-amber-500' : 'bg-emerald-500') : 'bg-rose-500');
+        box.classList.toggle('ring-rose-300', !online);
+    }
+
+    let syncing = false;
+    async function syncQueue() {
+        if (!Offline || syncing || !navigator.onLine) return refreshNetStatus();
+        syncing = true;
+        try {
+            if ((await Offline.count()) === 0) return;
+            const data = await Offline.flush(cfg.syncUrl, cfg.csrf);
+            const res = data.results || [];
+            const ok = res.filter((r) => r.ok).length;
+            const conflicts = res.filter((r) => r.conflict).length;
+            if (ok) toast(ok + ' ticket(s) hors ligne synchronisé(s)');
+            if (conflicts) toast(conflicts + ' ticket(s) en conflit — voir « Conflits synchro »', false);
+            if (ok) fetchCatalog(el.search.value.trim());
+        } catch (e) {
+            // Session expirée ou serveur indisponible : la file est conservée.
+        } finally {
+            syncing = false;
+            refreshNetStatus();
+        }
+    }
+
+    async function refreshSnapshot() {
+        if (!Offline || !navigator.onLine || !cfg.snapshotUrl) return;
+        try {
+            const res = await fetch(cfg.snapshotUrl, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+            if (res.ok) await Offline.saveSnapshot(await res.json());
+        } catch (e) { /* hors ligne */ }
+    }
+
+    window.addEventListener('online', () => { refreshNetStatus(); syncQueue(); refreshSnapshot(); });
+    window.addEventListener('offline', refreshNetStatus);
+    setInterval(syncQueue, 60000);
+    setInterval(refreshSnapshot, 600000);
+
     renderProducts(products);
     renderCart();
+    refreshNetStatus();
+    refreshSnapshot().then(syncQueue);
 })();
 </script>
 <script>
-window.addEventListener('online', async () => {
-    const q = JSON.parse(localStorage.getItem('pos-offline-queue') || '[]');
-    if (!q.length) return;
-    const left = [];
-    for (const job of q) {
-        try {
-            const res = await fetch(job.url, { method: 'POST', headers: job.headers, body: JSON.stringify(job.body) });
-            if (!res.ok) left.push(job);
-        } catch (e) { left.push(job); }
-    }
-    localStorage.setItem('pos-offline-queue', JSON.stringify(left));
-});
+// Ancien format de file (jobs {url, body}) : converti une fois dans la file IndexedDB versionnée.
+(async () => {
+    if (!window.GreenPosOffline) return;
+    try {
+        const legacy = JSON.parse(localStorage.getItem('pos-offline-queue') || '[]').filter((j) => j && j.url && j.body);
+        for (const job of legacy) {
+            await window.GreenPosOffline.enqueue(Object.assign({ client_uuid: job.body.client_uuid || window.GreenPosOffline.uuid() }, job.body));
+        }
+        if (legacy.length) {
+            const rest = JSON.parse(localStorage.getItem('pos-offline-queue') || '[]').filter((j) => !(j && j.url));
+            localStorage.setItem('pos-offline-queue', JSON.stringify(rest));
+        }
+    } catch (e) {}
+})();
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('{{ \App\Support\RimalOffline::swUrl() }}').catch(() => {});
 }
 </script>
 </body>

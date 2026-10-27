@@ -778,7 +778,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () {
-                navigator.serviceWorker.register('/sw.js').catch(function () {});
+                navigator.serviceWorker.register('{{ \App\Support\RimalOffline::swUrl() }}').catch(function () {});
             });
         }
     </script>

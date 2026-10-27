@@ -20,3 +20,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/reports/rimal/{type}/print', [\App\Http\Controllers\RimalReportController::class, 'print'])->whereIn('type', array_merge(['pilotage'], array_keys(\App\Services\RimalReportService::REPORTS)))->name('reports.extra.print');
     Route::get('/sales/{sale}/bon-livraison', [\App\Http\Controllers\RimalReportController::class, 'deliveryNote'])->name('sales.delivery-note');
 });
+
+// Rimal V2 — phase 5 : conflits de synchronisation hors ligne
+Route::get('/pos/sync-conflicts', [\App\Http\Controllers\PosSyncConflictController::class, 'index'])->name('pos.sync-conflicts.index');
+Route::post('/pos/sync-conflicts/{conflict}/retry', [\App\Http\Controllers\PosSyncConflictController::class, 'retry'])->name('pos.sync-conflicts.retry');
+Route::post('/pos/sync-conflicts/{conflict}/resolve', [\App\Http\Controllers\PosSyncConflictController::class, 'resolve'])->name('pos.sync-conflicts.resolve');
