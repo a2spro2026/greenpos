@@ -46,6 +46,9 @@
 
         @can('sales.print')
             <a href="{{ route('sales.print', $sale) }}" target="_blank" class="gp-btn-secondary">Imprimer</a>
+            @if(in_array($sale->status, ['confirmed', 'preparing', 'delivered', 'completed'], true))
+                <a href="{{ route('sales.delivery-note', $sale) }}" target="_blank" class="gp-btn-secondary">Bon de livraison</a>
+            @endif
         @endcan
     </div>
 @endsection

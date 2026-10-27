@@ -72,4 +72,34 @@ class RimalPosViewsTest extends RimalPosTest
         $this->assertEquals(0.0, (float) $closed->cash_difference);
         $this->assertSame(['200' => 1, '50' => 1], array_map('intval', $closed->closing_breakdown));
     }
+
+    public function test_phase4_pilotage_reports_exports_bl_and_documents(): void
+    {
+        $this->product->update(['purchase_price' => 40]);
+        $pos = app(\App\Services\PosService::class);
+        $pos->completeSale([['product_id' => $this->product->id, 'quantity' => 2]], [['method' => 'cash', 'amount' => 240, 'tendered' => 240]]);
+        $sales = app(\App\Services\SaleService::class);
+        $order = $sales->create(['store_id' => $this->store->id, 'customer_id' => $this->customer->id, 'expected_delivery_at' => now()->addDay()->toDateString()], [
+            ['product_id' => $this->product->id, 'quantity' => 1],
+        ]);
+        $sales->confirm($order);
+
+        $m = app(\App\Services\RimalReportService::class)->metrics($this->company->id, now()->startOfMonth(), now()->endOfDay());
+        $this->assertEquals(240.0, $m['collected']);
+        $this->assertEquals(200.0 + 100.0 - 120.0, $m['margin']); // HT POS 200 + commande 100 − coût 3×40
+
+        $this->get(route('reports.pilotage', ['store_id' => 'all']))->assertOk()->assertSee('Trésorerie nette')->assertSee('Consolidé');
+        $this->get(route('reports.pilotage.export'))->assertOk();
+        foreach (array_keys(\App\Services\RimalReportService::REPORTS) as $type) {
+            $this->get(route('reports.extra', $type))->assertOk();
+            $this->get(route('reports.extra.print', $type))->assertOk()->assertSee('Enregistrer en PDF');
+            $x = $this->get(route('reports.extra.export', $type))->assertOk();
+            $this->assertStringContainsString('<Workbook', $x->streamedContent());
+        }
+        $this->get(route('reports.extra', 'commandes'))->assertSee($order->number)->assertSee('Sortie en cours');
+        $this->get(route('reports.extra.print', 'pilotage'))->assertOk();
+        $this->get(route('sales.delivery-note', $order))->assertOk()->assertSee('BON DE LIVRAISON')->assertSee('Test Co');
+        $this->get(route('reports.documents'))->assertOk()->assertSee('BL-'.$order->number);
+        $this->get(route('reports.documents', ['type' => 'ticket']))->assertOk()->assertDontSee('BL-'.$order->number);
+    }
 }
