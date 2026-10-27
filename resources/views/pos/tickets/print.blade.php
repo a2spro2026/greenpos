@@ -21,6 +21,9 @@
     <button onclick="window.print()" style="margin-bottom:12px;padding:8px 12px;cursor:pointer">Imprimer</button>
     <h1>{{ $sale->store?->name ?? 'GreenPOS' }}</h1>
     <p class="muted">{{ $sale->number }} · {{ optional($sale->completed_at)->format('d/m/Y H:i') }}</p>
+    @if($sale->ticket_name || $sale->delivery_platform)
+        <p class="muted">{{ $sale->ticket_name }}{{ $sale->ticket_name && $sale->delivery_platform ? ' · ' : '' }}{{ $sale->delivery_platform ? 'Livraison '.$sale->delivery_platform : '' }}</p>
+    @endif
     <p class="muted">Caissier : {{ $sale->cashier?->name ?? '—' }}@if($sale->customer) · {{ $sale->customer->name }}@endif</p>
 
     <table>
@@ -40,7 +43,7 @@
 
     <div class="pay">
         @foreach($sale->payments as $pay)
-            <div>{{ $pay->methodLabel() }} : {{ number_format($pay->amount, 2, ',', ' ') }}</div>
+            <div>{{ $pay->methodLabel() }} : {{ number_format($pay->amount, 2, ',', ' ') }}@if($pay->reference) · N° {{ $pay->reference }}@endif @if($pay->due_date) · Éch. {{ $pay->due_date->format('d/m/Y') }}@endif</div>
             @if($pay->change_amount > 0)
                 <div>Rendu : {{ number_format($pay->change_amount, 2, ',', ' ') }}</div>
             @endif

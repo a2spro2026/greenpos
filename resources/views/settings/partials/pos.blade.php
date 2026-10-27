@@ -59,5 +59,32 @@
             <label class="gp-label">Pied de ticket</label>
             <textarea name="receipt_footer" rows="2" class="gp-input">{{ $settings['receipt_footer'] }}</textarea>
         </div>
+        <div>
+            <label class="gp-label">Position des catégories (terminal)</label>
+            <select name="categories_position" class="gp-input">
+                <option value="bottom" @selected(($settings['categories_position'] ?? 'bottom') === 'bottom')>En bas de l'écran (par défaut)</option>
+                <option value="left" @selected(($settings['categories_position'] ?? 'bottom') === 'left')>À gauche</option>
+            </select>
+        </div>
+        @php
+            $platformRows = array_values($settings['delivery_platforms'] ?? []);
+            $platformRows[] = ['name' => '', 'commission_percent' => 0, 'active' => true];
+            $platformRows[] = ['name' => '', 'commission_percent' => 0, 'active' => true];
+        @endphp
+        <div class="space-y-3 rounded-xl bg-gp-bg p-4 dark:bg-white/5 sm:col-span-2">
+            <p class="text-xs font-bold uppercase tracking-wide text-gp-muted">Plateformes de livraison</p>
+            <p class="text-xs text-gp-muted">Laisser le nom vide pour retirer une ligne. La commission est calculée sur le total TTC du ticket.</p>
+            @foreach($platformRows as $i => $platform)
+                <div class="grid grid-cols-12 items-center gap-2">
+                    <input type="text" name="delivery_platforms[{{ $i }}][name]" value="{{ $platform['name'] ?? '' }}" class="gp-input col-span-6" placeholder="Nom de la plateforme">
+                    <input type="number" step="0.01" min="0" max="100" name="delivery_platforms[{{ $i }}][commission_percent]" value="{{ $platform['commission_percent'] ?? 0 }}" class="gp-input col-span-3" title="Commission %">
+                    <label class="col-span-3 inline-flex items-center gap-2 text-sm">
+                        <input type="hidden" name="delivery_platforms[{{ $i }}][active]" value="0">
+                        <input type="checkbox" name="delivery_platforms[{{ $i }}][active]" value="1" class="rounded border-gp-border" @checked($platform['active'] ?? true)>
+                        Active
+                    </label>
+                </div>
+            @endforeach
+        </div>
     </div>
 </article>

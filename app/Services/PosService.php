@@ -119,7 +119,7 @@ class PosService
         }
 
         return DB::transaction(function () use ($company, $store, $session, $items, $payments, $customerId, $notes, $meta) {
-            $computed = $this->computeLines($company->id, $items);
+            $computed = $this->computeLines($company->id, $items, (float) ($meta['ticket_discount_percent'] ?? 0));
             $paymentTotal = collect($payments)->sum(fn ($p) => (float) ($p['amount'] ?? 0));
 
             if (round($paymentTotal, 2) < round($computed['total_ttc'], 2)) {
@@ -145,6 +145,20 @@ class PosService
                 }
             }
 
+            $platformName = null;
+            $platformCommission = null;
+            if ($serviceMode === 'delivery' && ! empty($meta['delivery_platform'])) {
+                $platform = collect(app(SettingService::class)->getGroup('pos', $company)['delivery_platforms'] ?? [])
+                    ->first(fn ($p) => ($p['name'] ?? null) === $meta['delivery_platform'] && ($p['active'] ?? true));
+                if (! $platform) {
+                    throw ValidationException::withMessages(['delivery_platform' => 'Plateforme de livraison inconnue.']);
+                }
+                $platformName = $platform['name'];
+                $platformCommission = round(((float) ($platform['commission_percent'] ?? 0) / 100) * $computed['total_ttc'], 2);
+                $deliveryAgentId = null;
+                $deliveryCommission = null;
+            }
+
             $seq = PosSale::query()->forCompany($company->id)->count() + 1;
             $sale = PosSale::query()->create([
                 'company_id' => $company->id,
@@ -156,6 +170,11 @@ class PosService
                 'delivery_agent_id' => $deliveryAgentId,
                 'delivery_commission' => $deliveryCommission,
                 'service_mode' => $serviceMode,
+                'ticket_name' => $meta['ticket_name'] ?? null,
+                'ticket_discount_percent' => (float) ($meta['ticket_discount_percent'] ?? 0),
+                'delivery_platform' => $platformName,
+                'platform_commission' => $platformCommission,
+                'pos_table_id' => $meta['pos_table_id'] ?? null,
                 'number' => 'TK-'.now()->format('Ymd').'-'.str_pad((string) $seq, 4, '0', STR_PAD_LEFT),
                 'status' => 'completed',
                 'subtotal_ht' => $computed['subtotal_ht'],
@@ -220,6 +239,15 @@ class PosService
                     }
                 }
 
+                if (in_array($method, PosPayment::INSTRUMENT_METHODS, true)) {
+                    if (empty($payment['reference'])) {
+                        throw ValidationException::withMessages(['payments' => 'Numéro obligatoire pour '.PosPayment::METHODS[$method].'.']);
+                    }
+                    if (empty($payment['due_date'])) {
+                        throw ValidationException::withMessages(['payments' => "Date d'échéance obligatoire pour ".PosPayment::METHODS[$method].'.']);
+                    }
+                }
+
                 $tendered = isset($payment['tendered']) ? (float) $payment['tendered'] : null;
                 PosPayment::query()->create([
                     'pos_sale_id' => $sale->id,
@@ -230,6 +258,7 @@ class PosService
                         ? max(0, round($tendered - $amount, 2))
                         : null,
                     'reference' => $payment['reference'] ?? null,
+                    'due_date' => $payment['due_date'] ?? null,
                 ]);
             }
 
@@ -259,7 +288,7 @@ class PosService
         });
     }
 
-    public function holdSale(array $items, ?int $customerId = null, ?string $notes = null): PosSale
+    public function holdSale(array $items, ?int $customerId = null, ?string $notes = null, array $meta = []): PosSale
     {
         $company = Workspace::company();
         $store = Workspace::store();
@@ -271,30 +300,82 @@ class PosService
             throw ValidationException::withMessages(['items' => 'Panier vide.']);
         }
 
-        $seq = PosSale::query()->forCompany($company->id)->count() + 1;
-        $computed = $this->computeLines($company->id, $items);
+        $ticketDiscount = (float) ($meta['ticket_discount_percent'] ?? 0);
+        $computed = $this->computeLines($company->id, $items, $ticketDiscount);
+        $tableId = $meta['pos_table_id'] ?? null;
+        if ($tableId) {
+            $tableOk = \App\Models\PosTable::query()->forCompany($company->id)->whereKey($tableId)->exists();
+            if (! $tableOk) {
+                throw ValidationException::withMessages(['pos_table_id' => 'Table introuvable.']);
+            }
+        }
 
-        return PosSale::query()->create([
-            'company_id' => $company->id,
-            'store_id' => $store->id,
-            'pos_session_id' => $session->id,
+        $attributes = [
             'customer_id' => $customerId,
-            'cashier_id' => Workspace::user()?->id,
-            'number' => 'HOLD-'.now()->format('Ymd').'-'.str_pad((string) $seq, 4, '0', STR_PAD_LEFT),
-            'status' => 'held',
+            'ticket_name' => $meta['ticket_name'] ?? null,
+            'service_mode' => $meta['service_mode'] ?? null,
+            'pos_table_id' => $tableId,
+            'ticket_discount_percent' => $ticketDiscount,
             'subtotal_ht' => $computed['subtotal_ht'],
             'tax_total' => $computed['tax_total'],
             'discount_total' => $computed['discount_total'],
             'total_ttc' => $computed['total_ttc'],
-            'currency' => $company->currency ?? 'MAD',
             'notes' => $notes,
             'held_payload' => [
                 'items' => $items,
                 'customer_id' => $customerId,
                 'notes' => $notes,
+                'meta' => $meta,
             ],
             'held_at' => now(),
-        ]);
+        ];
+
+        return DB::transaction(function () use ($company, $store, $session, $attributes, $meta, $tableId) {
+            $existing = ! empty($meta['held_sale_id'])
+                ? PosSale::query()->forCompany($company->id)->whereKey($meta['held_sale_id'])->where('status', 'held')->lockForUpdate()->first()
+                : null;
+
+            if ($existing) {
+                // Modification d'un ticket enregistré avant validation : mise à jour sur place.
+                $previousTable = $existing->pos_table_id;
+                $existing->update($attributes);
+                $sale = $existing->fresh();
+                if ($previousTable && $previousTable !== $tableId) {
+                    $this->releaseTable($previousTable, $sale->id);
+                }
+            } else {
+                $seq = PosSale::query()->forCompany($company->id)->count() + 1;
+                $sale = PosSale::query()->create($attributes + [
+                    'company_id' => $company->id,
+                    'store_id' => $store->id,
+                    'pos_session_id' => $session->id,
+                    'cashier_id' => Workspace::user()?->id,
+                    'number' => 'HOLD-'.now()->format('Ymd').'-'.str_pad((string) $seq, 4, '0', STR_PAD_LEFT),
+                    'status' => 'held',
+                    'currency' => $company->currency ?? 'MAD',
+                ]);
+            }
+
+            if ($tableId) {
+                \App\Models\PosTable::query()->whereKey($tableId)->update([
+                    'status' => 'occupied',
+                    'current_pos_sale_id' => $sale->id,
+                ]);
+            }
+
+            return $sale;
+        });
+    }
+
+    public function releaseTable(?int $tableId, ?int $saleId = null): void
+    {
+        if (! $tableId) {
+            return;
+        }
+        \App\Models\PosTable::query()
+            ->whereKey($tableId)
+            ->when($saleId, fn ($q) => $q->where('current_pos_sale_id', $saleId))
+            ->update(['status' => 'free', 'current_pos_sale_id' => null]);
     }
 
     public function cancelSale(PosSale $sale): PosSale
@@ -310,6 +391,7 @@ class PosService
             'status' => 'cancelled',
             'cancelled_at' => now(),
         ]);
+        $this->releaseTable($sale->pos_table_id, $sale->id);
 
         return $sale;
     }
@@ -390,7 +472,8 @@ class PosService
             : collect();
 
         return $products->map(function (Product $product) use ($levels) {
-            $qty = $levels->get($product->id)?->quantity;
+            $level = $levels->get($product->id);
+            $qty = $level ? (float) $level->quantity - (float) $level->reserved_quantity : null;
 
             return [
                 'id' => $product->id,
@@ -408,8 +491,9 @@ class PosService
         })->all();
     }
 
-    protected function computeLines(int $companyId, array $items): array
+    protected function computeLines(int $companyId, array $items, float $ticketDiscount = 0): array
     {
+        $ticketDiscount = max(0, min(100, $ticketDiscount));
         $lines = [];
         $subtotal = 0;
         $taxTotal = 0;
@@ -426,6 +510,10 @@ class PosService
             }
             $price = isset($item['unit_price']) ? (float) $item['unit_price'] : (float) $product->sale_price;
             $discount = (float) ($item['discount_percent'] ?? 0);
+            if ($ticketDiscount > 0) {
+                // Remise ticket combinée à la remise ligne : 1 - (1 - dl)(1 - dt)
+                $discount = round(100 - (100 - $discount) * (100 - $ticketDiscount) / 100, 4);
+            }
             $tax = isset($item['tax_rate']) ? (float) $item['tax_rate'] : (float) $product->tax_rate;
 
             $gross = $qty * $price;

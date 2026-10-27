@@ -249,7 +249,7 @@ class SaleController extends Controller
         $this->ensureCompany($sale);
 
         $data = $request->validate([
-            'method' => ['required', 'in:cash,card,bank_transfer,mobile,check,other'],
+            'method' => ['required', 'in:cash,card,instant_transfer,bank_transfer,mobile,check,effet,other'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'paid_at' => ['nullable', 'date'],
             'reference' => ['nullable', 'string', 'max:120'],
@@ -301,8 +301,12 @@ class SaleController extends Controller
     {
         $company = Workspace::company();
         $data = $request->validate([
-            'customer_id' => ['nullable', 'exists:customers,id'],
+            'customer_id' => ['required', 'exists:customers,id'],
             'store_id' => ['required', 'exists:stores,id'],
+            'expected_delivery_at' => ['nullable', 'date'],
+            'delivery_agent_id' => ['nullable', 'exists:delivery_agents,id'],
+            'delivery_address' => ['nullable', 'string', 'max:500'],
+            'contact_phone' => ['nullable', 'string', 'max:40'],
             'salesperson_id' => ['nullable', 'exists:users,id'],
             'reference' => ['nullable', 'string', 'max:120'],
             'currency' => ['nullable', 'string', 'max:8'],
@@ -316,6 +320,10 @@ class SaleController extends Controller
             'lines.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
         Store::query()->whereKey($data['store_id'])->where('company_id', $company->id)->firstOrFail();
+        Customer::query()->forCompany($company->id)->whereKey($data['customer_id'])->firstOrFail();
+        if (! empty($data['delivery_agent_id'])) {
+            \App\Models\DeliveryAgent::query()->forCompany($company->id)->whereKey($data['delivery_agent_id'])->firstOrFail();
+        }
         return $data;
     }
 
@@ -328,6 +336,7 @@ class SaleController extends Controller
             'products' => Product::query()->forCompany($company->id)->where('status', 'active')->orderBy('name')->get(['id', 'name', 'sku', 'sale_price', 'tax_rate']),
             'salespeople' => User::query()->whereHas('companies', fn ($q) => $q->where('companies.id', $company->id))->orderBy('name')->get(['id', 'name']),
             'currency' => $company->currency ?? 'MAD',
+            'deliveryAgents' => \App\Models\DeliveryAgent::query()->forCompany($company->id)->where('is_active', true)->orderBy('name')->get(['id', 'name']),
         ];
     }
 

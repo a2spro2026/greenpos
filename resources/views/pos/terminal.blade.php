@@ -42,6 +42,9 @@
         html.dark .pos-chrome { background: #111827; border-color: rgba(255,255,255,.1); }
     </style>
 </head>
+@php
+    $catLeft = ($categoriesPosition ?? 'bottom') === 'left';
+@endphp
 <body class="pos-shell antialiased" style="font-family:'Plus Jakarta Sans',system-ui,sans-serif">
 @php
     $canHold = auth()->user()?->can('pos.hold');
@@ -91,12 +94,6 @@
                        class="h-14 w-full rounded-2xl border-0 bg-white pl-12 pr-4 text-base font-medium text-slate-900 outline-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500/60 dark:bg-white/5 dark:text-white dark:ring-white/10 dark:placeholder:text-slate-500">
                 <svg class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"/></svg>
             </div>
-            <div class="flex gap-2 overflow-x-auto pb-1" id="pos-categories">
-                <button type="button" data-cat="" class="pos-cat shrink-0 rounded-full bg-emerald-500 px-4 py-2 text-sm font-bold text-slate-950">Tous</button>
-                @foreach($categories as $cat)
-                    <button type="button" data-cat="{{ $cat->id }}" class="pos-cat shrink-0 rounded-full bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">{{ $cat->name }}</button>
-                @endforeach
-            </div>
             @if($favorites->isNotEmpty())
                 <div>
                     <p class="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">Favoris / récents</p>
@@ -118,9 +115,21 @@
             @endif
         </div>
 
-        <div id="pos-products" class="flex-1 overflow-y-auto p-4">
-            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5" id="pos-product-grid"></div>
-            <p id="pos-empty" class="hidden py-16 text-center text-sm text-slate-500">Aucun produit trouvé.</p>
+        <div class="flex min-h-0 flex-1 {{ $catLeft ? 'flex-row' : 'flex-col' }}">
+            @if($catLeft)
+                <nav id="pos-categories" class="flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r border-slate-200 p-3 dark:border-white/10" data-position="left">
+                    @include('pos.partials.categories', ['categories' => $categories])
+                </nav>
+            @endif
+            <div id="pos-products" class="min-h-0 flex-1 overflow-y-auto p-4">
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5" id="pos-product-grid"></div>
+                <p id="pos-empty" class="hidden py-16 text-center text-sm text-slate-500">Aucun produit trouvé.</p>
+            </div>
+            @unless($catLeft)
+                <nav id="pos-categories" class="flex shrink-0 gap-2 overflow-x-auto border-t border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-[#0b1220]" data-position="bottom">
+                    @include('pos.partials.categories', ['categories' => $categories])
+                </nav>
+            @endunless
         </div>
     </section>
 
@@ -155,14 +164,42 @@
                         @endforeach
                     </select>
                 </label>
-                <label class="block">
-                    <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Livreur</span>
+                <label class="block" id="pos-delivery-agent-wrap">
+                    <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Livreur interne</span>
                     <select id="pos-delivery-agent" class="h-9 w-full rounded-xl border-0 bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
                         <option value="">—</option>
                         @foreach(($deliveryAgents ?? []) as $agent)
                             <option value="{{ $agent->id }}">{{ $agent->name }}</option>
                         @endforeach
                     </select>
+                </label>
+            </div>
+            <div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <label class="block">
+                    <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Plateforme</span>
+                    <select id="pos-delivery-platform" class="h-9 w-full rounded-xl border-0 bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10" title="Livraison par plateforme">
+                        <option value="">— (livraison interne)</option>
+                        @foreach(($deliveryPlatforms ?? []) as $platform)
+                            <option value="{{ $platform['name'] }}">{{ $platform['name'] }} ({{ rtrim(rtrim(number_format((float) ($platform['commission_percent'] ?? 0), 2, '.', ''), '0'), '.') }}%)</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Table</span>
+                    <select id="pos-table" class="h-9 w-full rounded-xl border-0 bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
+                        <option value="">—</option>
+                        @foreach(($tables ?? []) as $t)
+                            <option value="{{ $t->id }}">{{ $t->group_name ? $t->group_name.' · ' : '' }}{{ $t->name }}{{ $t->status === 'occupied' ? ' (occupée)' : '' }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Nom du ticket</span>
+                    <input id="pos-ticket-name" type="text" maxlength="120" placeholder="Ex. Karim, Table 4…" class="h-9 w-full rounded-xl bg-white/5 px-2 text-xs font-semibold ring-1 ring-white/10 placeholder:text-slate-500">
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Remise ticket %</span>
+                    <input id="pos-ticket-discount" type="number" min="0" max="100" step="0.5" value="0" class="h-9 w-full rounded-xl bg-white/5 px-2 text-xs font-bold ring-1 ring-white/10">
                 </label>
             </div>
         </div>
@@ -187,7 +224,7 @@
 
         <div class="grid grid-cols-2 gap-2 border-t border-white/10 p-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
             <button type="button" id="pos-clear" class="rounded-xl bg-white/5 py-3 text-sm font-bold ring-1 ring-white/10 hover:bg-rose-500/20">Vider</button>
-            <button type="button" id="pos-hold" class="rounded-xl bg-amber-500/20 py-3 text-sm font-bold text-amber-200 ring-1 ring-amber-500/30 hover:bg-amber-500/30 {{ $canHold ? '' : 'opacity-40' }}" {{ $canHold ? '' : 'disabled' }}>Suspendre</button>
+            <button type="button" id="pos-hold" class="rounded-xl bg-amber-500/20 py-3 text-sm font-bold text-amber-200 ring-1 ring-amber-500/30 hover:bg-amber-500/30 {{ $canHold ? '' : 'opacity-40' }}" {{ $canHold ? '' : 'disabled' }}>Enregistrer</button>
             <button type="button" id="pos-resume-btn" class="rounded-xl bg-sky-500/20 py-3 text-sm font-bold text-sky-200 ring-1 ring-sky-500/30 hover:bg-sky-500/30">Reprendre</button>
             <button type="button" id="pos-pay" class="rounded-xl bg-emerald-500 py-3 text-sm font-extrabold text-slate-950 hover:bg-emerald-400 sm:col-span-1 lg:col-span-2 xl:col-span-1">Payer (F4)</button>
         </div>
@@ -198,7 +235,7 @@
 <div id="pos-held-modal" class="pos-modal-backdrop fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4">
     <div class="w-full max-w-md rounded-3xl bg-[#111827] p-5 shadow-2xl ring-1 ring-white/10">
         <div class="mb-4 flex items-center justify-between">
-            <h3 class="text-lg font-bold">Ventes suspendues</h3>
+            <h3 class="text-lg font-bold">Tickets enregistrés</h3>
             <button type="button" data-close-held class="rounded-lg p-2 hover:bg-white/10">✕</button>
         </div>
         <ul class="max-h-80 space-y-2 overflow-y-auto">
@@ -206,14 +243,15 @@
                 <li>
                     <button type="button" class="pos-resume-item flex w-full items-center justify-between rounded-2xl bg-white/5 px-4 py-3 text-left ring-1 ring-white/10 hover:bg-white/10" data-id="{{ $h->id }}">
                         <span>
-                            <span class="block font-bold">{{ $h->number }}</span>
+                            <span class="block font-bold">{{ $h->ticket_name ?: $h->number }}</span>
+                            @if($h->ticket_name)<span class="block text-[11px] text-slate-500">{{ $h->number }}</span>@endif
                             <span class="text-xs text-slate-400">{{ optional($h->held_at)->format('d/m H:i') }}</span>
                         </span>
                         <span class="font-bold text-emerald-400">{{ number_format($h->total_ttc, 2, ',', ' ') }}</span>
                     </button>
                 </li>
             @empty
-                <li class="py-8 text-center text-sm text-slate-500">Aucune vente suspendue.</li>
+                <li class="py-8 text-center text-sm text-slate-500">Aucun ticket enregistré.</li>
             @endforelse
         </ul>
     </div>
@@ -229,11 +267,15 @@
         <p class="mb-1 text-xs font-bold uppercase tracking-wider text-slate-500">Total à encaisser</p>
         <p id="pay-total" class="mb-5 text-4xl font-extrabold text-emerald-400">0,00</p>
 
-        <div class="mb-4 grid grid-cols-3 gap-2">
-            <button type="button" data-method="cash" class="pay-method rounded-2xl bg-emerald-500 py-3 text-sm font-bold text-slate-950">Espèces</button>
-            <button type="button" data-method="card" class="pay-method rounded-2xl bg-white/5 py-3 text-sm font-bold ring-1 ring-white/10">Carte</button>
-            <button type="button" data-method="mobile" class="pay-method rounded-2xl bg-white/5 py-3 text-sm font-bold ring-1 ring-white/10">Mobile</button>
-            <button type="button" data-method="credit" class="pay-method rounded-2xl bg-white/5 py-3 text-sm font-bold ring-1 ring-white/10">Crédit</button>
+        <div class="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
+            @foreach($paymentMethods as $mKey => $mLabel)
+                <button type="button" data-method="{{ $mKey }}" class="pay-method rounded-2xl {{ $mKey === 'cash' ? 'bg-emerald-500 text-slate-950' : 'bg-white/5 ring-1 ring-white/10' }} px-2 py-3 text-xs font-bold sm:text-sm">{{ $mLabel }}</button>
+            @endforeach
+        </div>
+
+        <div id="pay-instrument-block" class="mb-4 hidden grid grid-cols-2 gap-2">
+            <label class="block"><span class="mb-1 block text-xs font-bold text-slate-400">Numéro</span><input id="pay-reference" type="text" maxlength="120" class="h-11 w-full rounded-xl bg-white/5 px-3 text-sm font-bold ring-1 ring-white/10"></label>
+            <label class="block"><span class="mb-1 block text-xs font-bold text-slate-400">Échéance</span><input id="pay-due-date" type="date" class="h-11 w-full rounded-xl bg-white/5 px-3 text-sm font-bold ring-1 ring-white/10"></label>
         </div>
 
         <div id="pay-cash-block" class="mb-4 space-y-3">
@@ -255,11 +297,19 @@
 
         <div id="pay-mixed-block" class="mb-4 hidden space-y-2">
             <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Paiement mixte</p>
-            <div class="grid grid-cols-3 gap-2">
-                <label class="block"><span class="text-[11px] text-slate-400">Espèces</span><input id="mix-cash" type="number" min="0" step="0.01" value="0" class="mt-1 h-11 w-full rounded-xl bg-white/5 px-3 text-sm font-bold ring-1 ring-white/10"></label>
-                <label class="block"><span class="text-[11px] text-slate-400">Carte</span><input id="mix-card" type="number" min="0" step="0.01" value="0" class="mt-1 h-11 w-full rounded-xl bg-white/5 px-3 text-sm font-bold ring-1 ring-white/10"></label>
-                <label class="block"><span class="text-[11px] text-slate-400">Mobile</span><input id="mix-mobile" type="number" min="0" step="0.01" value="0" class="mt-1 h-11 w-full rounded-xl bg-white/5 px-3 text-sm font-bold ring-1 ring-white/10"></label>
+            <div class="max-h-64 space-y-2 overflow-y-auto pr-1">
+                @foreach($paymentMethods as $mKey => $mLabel)
+                    <div class="grid grid-cols-12 items-center gap-2">
+                        <span class="col-span-4 text-[11px] text-slate-400">{{ $mLabel }}</span>
+                        <input data-mix="{{ $mKey }}" type="number" min="0" step="0.01" value="0" class="col-span-3 h-10 w-full rounded-xl bg-white/5 px-2 text-sm font-bold ring-1 ring-white/10">
+                        @if(in_array($mKey, $instrumentMethods, true))
+                            <input data-mix-ref="{{ $mKey }}" type="text" placeholder="N°" class="col-span-2 h-10 w-full rounded-xl bg-white/5 px-2 text-xs ring-1 ring-white/10">
+                            <input data-mix-due="{{ $mKey }}" type="date" class="col-span-3 h-10 w-full rounded-xl bg-white/5 px-1 text-xs ring-1 ring-white/10">
+                        @endif
+                    </div>
+                @endforeach
             </div>
+            <p class="text-[11px] text-slate-500">Reste à répartir : <span id="mix-remaining" class="font-bold text-amber-300">0,00</span></p>
             <button type="button" id="pay-enable-mixed" class="text-xs font-semibold text-sky-300 hover:underline">Activer le mixte</button>
         </div>
         <button type="button" id="pay-toggle-mixed" class="mb-4 text-xs font-semibold text-sky-300 hover:underline">Paiement mixte…</button>
@@ -288,6 +338,8 @@
     };
 
     const initialCatalog = @json($catalog);
+    const instrumentMethods = @json($instrumentMethods);
+    const methodLabels = @json($paymentMethods);
     let products = initialCatalog.slice();
     let categoryId = '';
     let cart = [];
@@ -333,11 +385,22 @@
         toast._t = setTimeout(() => el.toast.classList.add('hidden'), 2200);
     }
 
+    function ticketDiscount() {
+        const v = Number(document.getElementById('pos-ticket-discount')?.value || 0);
+        return Math.min(100, Math.max(0, v));
+    }
+
+    function effectiveDiscount(l) {
+        const td = ticketDiscount();
+        const ld = Number(l.discount || 0);
+        return td > 0 ? 100 - (100 - ld) * (100 - td) / 100 : ld;
+    }
+
     function totals() {
         let sub = 0, disc = 0, tax = 0;
         cart.forEach((l) => {
             const gross = l.qty * l.price;
-            const d = gross * ((l.discount || 0) / 100);
+            const d = gross * (effectiveDiscount(l) / 100);
             const net = gross - d;
             const t = net * ((l.tax || 0) / 100);
             sub += net; disc += d; tax += t;
@@ -379,7 +442,7 @@
 
     function lineTotal(l) {
         const gross = l.qty * l.price;
-        const d = gross * ((l.discount || 0) / 100);
+        const d = gross * (effectiveDiscount(l) / 100);
         const net = gross - d;
         return net + net * ((l.tax || 0) / 100);
     }
@@ -482,6 +545,7 @@
             btn.classList.toggle('ring-white/10', !on);
         });
         el.cashBlock.classList.toggle('hidden', m !== 'cash' || mixedMode);
+        document.getElementById('pay-instrument-block').classList.toggle('hidden', mixedMode || !instrumentMethods.includes(m));
         if (m !== 'cash') {
             el.tendered.value = totals().total.toFixed(2);
             updateChange();
@@ -498,12 +562,25 @@
         const total = totals().total;
         let payments = [];
         if (mixedMode) {
-            const cash = Number(document.getElementById('mix-cash').value || 0);
-            const card = Number(document.getElementById('mix-card').value || 0);
-            const mobile = Number(document.getElementById('mix-mobile').value || 0);
-            if (cash > 0) payments.push({ method: 'cash', amount: cash, tendered: cash });
-            if (card > 0) payments.push({ method: 'card', amount: card });
-            if (mobile > 0) payments.push({ method: 'mobile', amount: mobile });
+            let bad = null;
+            document.querySelectorAll('[data-mix]').forEach((inp) => {
+                const m = inp.dataset.mix;
+                const amount = Number(inp.value || 0);
+                if (amount <= 0) return;
+                const p = { method: m, amount };
+                if (m === 'cash') p.tendered = amount;
+                if (instrumentMethods.includes(m)) {
+                    p.reference = document.querySelector(`[data-mix-ref="${m}"]`)?.value || '';
+                    p.due_date = document.querySelector(`[data-mix-due="${m}"]`)?.value || '';
+                    if (!p.reference || !p.due_date) bad = methodLabels[m];
+                }
+                payments.push(p);
+            });
+            if (bad) {
+                el.payError.textContent = 'Numéro et échéance obligatoires pour : ' + bad;
+                el.payError.classList.remove('hidden');
+                return;
+            }
         } else if (payMethod === 'cash') {
             const tendered = Number(el.tendered.value || 0);
             if (tendered + 0.001 < total) {
@@ -514,6 +591,17 @@
             payments = [{ method: 'cash', amount: total, tendered }];
         } else {
             payments = [{ method: payMethod, amount: total }];
+            if (instrumentMethods.includes(payMethod)) {
+                const reference = document.getElementById('pay-reference').value.trim();
+                const due = document.getElementById('pay-due-date').value;
+                if (!reference || !due) {
+                    el.payError.textContent = 'Numéro et date d’échéance obligatoires.';
+                    el.payError.classList.remove('hidden');
+                    return;
+                }
+                payments[0].reference = reference;
+                payments[0].due_date = due;
+            }
         }
 
         const paid = payments.reduce((s, p) => s + Number(p.amount), 0);
@@ -532,6 +620,10 @@
             service_mode: document.getElementById('pos-service-mode')?.value || null,
             employee_id: document.getElementById('pos-employee')?.value || null,
             delivery_agent_id: document.getElementById('pos-delivery-agent')?.value || null,
+            delivery_platform: document.getElementById('pos-delivery-platform')?.value || null,
+            ticket_discount_percent: ticketDiscount(),
+            ticket_name: document.getElementById('pos-ticket-name')?.value || null,
+            pos_table_id: document.getElementById('pos-table')?.value || null,
         };
 
         document.getElementById('pay-confirm').disabled = true;
@@ -553,6 +645,7 @@
             cart = [];
             renderCart();
             el.notes.value = '';
+            resetTicketMeta();
             heldSaleId = null;
             closePay();
             toast('Ticket ' + data.number + ' validé');
@@ -586,13 +679,20 @@
                     items: payloadItems(),
                     customer_id: el.customer.value || null,
                     notes: el.notes.value || null,
+                    ticket_name: document.getElementById('pos-ticket-name')?.value || null,
+                    ticket_discount_percent: ticketDiscount(),
+                    service_mode: document.getElementById('pos-service-mode')?.value || null,
+                    pos_table_id: document.getElementById('pos-table')?.value || null,
+                    held_sale_id: heldSaleId,
                 }),
             });
             const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.message || 'Impossible de suspendre');
+            if (!res.ok) throw new Error(data.message || Object.values(data.errors || {}).flat()[0] || 'Impossible d’enregistrer');
             cart = [];
+            heldSaleId = null;
+            resetTicketMeta();
             renderCart();
-            toast('Suspendue : ' + data.number);
+            toast('Ticket enregistré : ' + data.number);
             setTimeout(() => location.reload(), 600);
         } catch (e) {
             toast(e.message, false);
@@ -623,10 +723,32 @@
         }
         if (data.payload?.customer_id) el.customer.value = String(data.payload.customer_id);
         if (data.payload?.notes) el.notes.value = data.payload.notes;
+        const meta = data.payload?.meta || {};
+        document.getElementById('pos-ticket-name').value = data.ticket_name || '';
+        document.getElementById('pos-ticket-discount').value = data.ticket_discount_percent || 0;
+        document.getElementById('pos-table').value = data.pos_table_id ? String(data.pos_table_id) : '';
+        if (meta.service_mode) document.getElementById('pos-service-mode').value = meta.service_mode;
         heldSaleId = data.sale_id || id;
         renderCart();
         closeHeld();
         toast('Reprise ' + data.number);
+    }
+
+    function resetTicketMeta() {
+        ['pos-ticket-name', 'pos-table', 'pos-delivery-platform'].forEach((id) => {
+            const n = document.getElementById(id);
+            if (n) n.value = '';
+        });
+        const td = document.getElementById('pos-ticket-discount');
+        if (td) td.value = 0;
+    }
+
+    function updateMixRemaining() {
+        const total = totals().total;
+        let paid = 0;
+        document.querySelectorAll('[data-mix]').forEach((i) => { paid += Number(i.value || 0); });
+        const r = document.getElementById('mix-remaining');
+        if (r) r.textContent = money(Math.max(0, total - paid));
     }
 
     function closePay() {
@@ -747,14 +869,22 @@
         mixedMode = !mixedMode;
         document.getElementById('pay-mixed-block').classList.toggle('hidden', !mixedMode);
         el.cashBlock.classList.toggle('hidden', mixedMode || payMethod !== 'cash');
+        document.getElementById('pay-instrument-block').classList.toggle('hidden', mixedMode || !instrumentMethods.includes(payMethod));
         if (mixedMode) {
             const t = totals().total;
-            document.getElementById('mix-cash').value = t.toFixed(2);
-            document.getElementById('mix-card').value = '0';
-            document.getElementById('mix-mobile').value = '0';
+            document.querySelectorAll('[data-mix]').forEach((i) => { i.value = i.dataset.mix === 'cash' ? t.toFixed(2) : '0'; });
+            updateMixRemaining();
         }
     });
     document.getElementById('pay-confirm').addEventListener('click', confirmPay);
+    document.querySelectorAll('[data-mix]').forEach((i) => i.addEventListener('input', updateMixRemaining));
+    document.getElementById('pos-ticket-discount').addEventListener('input', renderCart);
+    document.getElementById('pos-delivery-platform').addEventListener('change', (e) => {
+        if (e.target.value) {
+            document.getElementById('pos-service-mode').value = 'delivery';
+            document.getElementById('pos-delivery-agent').value = '';
+        }
+    });
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'F2') { e.preventDefault(); el.search.focus(); el.search.select(); }

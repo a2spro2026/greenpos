@@ -48,6 +48,7 @@ class Sale extends Model
         'created_by', 'updated_by', 'pos_sale_id', 'quote_id', 'invoice_id',
         'number', 'origin', 'service_mode', 'status', 'reference', 'currency',
         'sold_at', 'notes', 'delivery_address', 'ticket_name', 'delivery_commission',
+        'expected_delivery_at', 'stock_state', 'contact_phone',
         'subtotal_ht', 'tax_total', 'discount_total', 'total_ttc',
         'amount_paid', 'amount_returned',
         'confirmed_at', 'delivered_at', 'completed_at', 'cancelled_at',
@@ -57,6 +58,7 @@ class Sale extends Model
     {
         return [
             'sold_at' => 'date',
+            'expected_delivery_at' => 'date',
             'subtotal_ht' => 'decimal:2',
             'tax_total' => 'decimal:2',
             'discount_total' => 'decimal:2',
@@ -97,6 +99,15 @@ class Sale extends Model
     public function statusColor(): string { return self::STATUS_COLORS[$this->status] ?? 'bg-slate-100 text-slate-700'; }
     public function originLabel(): string { return self::ORIGINS[$this->origin] ?? $this->origin; }
     public function serviceModeLabel(): string { return self::SERVICE_MODES[$this->service_mode] ?? ($this->service_mode ?: '—'); }
+
+    public function stockStateLabel(): ?string
+    {
+        return match ($this->stock_state) {
+            'reserved' => 'Sortie en cours',
+            'out' => 'Sorti (livré)',
+            default => null,
+        };
+    }
 
     public function balanceDue(): float
     {

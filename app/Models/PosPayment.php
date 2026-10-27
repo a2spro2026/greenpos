@@ -10,11 +10,16 @@ class PosPayment extends Model
     public const METHODS = [
         'cash' => 'Espèces',
         'card' => 'Carte bancaire',
-        'mobile' => 'Paiement mobile',
-        'transfer' => 'Virement',
+        'instant_transfer' => 'Virement instantané',
+        'transfer' => 'Virement simple',
         'cheque' => 'Chèque',
+        'effet' => 'Effet',
+        'mobile' => 'Paiement mobile',
         'credit' => 'Crédit client',
     ];
+
+    /** Modes nécessitant un numéro et une date d'échéance. */
+    public const INSTRUMENT_METHODS = ['cheque', 'effet'];
 
     protected $fillable = [
         'pos_sale_id',
@@ -23,6 +28,8 @@ class PosPayment extends Model
         'tendered',
         'change_amount',
         'reference',
+        'due_date',
+        'collected_at',
     ];
 
     protected function casts(): array
@@ -31,6 +38,8 @@ class PosPayment extends Model
             'amount' => 'decimal:2',
             'tendered' => 'decimal:2',
             'change_amount' => 'decimal:2',
+            'due_date' => 'date',
+            'collected_at' => 'datetime',
         ];
     }
 

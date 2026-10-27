@@ -137,10 +137,25 @@ class PosController extends Controller
             ->get(['id', 'name', 'type', 'commission_percent', 'commission_fixed']);
 
         $serviceModes = \App\Models\Sale::SERVICE_MODES;
+        $posSettings = app(\App\Services\SettingService::class)->getGroup('pos', $company);
+        $deliveryPlatforms = collect($posSettings['delivery_platforms'] ?? [])
+            ->filter(fn ($p) => ! empty($p['name']) && ($p['active'] ?? true))
+            ->values();
+        $categoriesPosition = in_array($posSettings['categories_position'] ?? 'bottom', ['bottom', 'left'], true)
+            ? ($posSettings['categories_position'] ?? 'bottom')
+            : 'bottom';
+        $paymentMethods = PosPayment::METHODS;
+        $instrumentMethods = PosPayment::INSTRUMENT_METHODS;
+        $tables = \App\Models\PosTable::query()
+            ->forCompany($company->id)
+            ->where(fn ($q) => $q->whereNull('store_id')->orWhere('store_id', Workspace::store()?->id))
+            ->orderBy('sort_order')->orderBy('name')
+            ->get(['id', 'name', 'group_name', 'status']);
 
         return view('pos.terminal', compact(
             'session', 'categories', 'customers', 'favorites', 'held', 'catalog',
-            'employees', 'deliveryAgents', 'serviceModes'
+            'employees', 'deliveryAgents', 'serviceModes', 'deliveryPlatforms',
+            'categoriesPosition', 'paymentMethods', 'instrumentMethods', 'tables'
         ));
     }
 
@@ -168,7 +183,9 @@ class PosController extends Controller
             'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'items.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'payments' => ['required', 'array', 'min:1'],
-            'payments.*.method' => ['required', 'in:cash,card,mobile,transfer,cheque,credit'],
+            'payments.*.method' => ['required', 'in:'.implode(',', array_keys(PosPayment::METHODS))],
+            'payments.*.reference' => ['nullable', 'string', 'max:120'],
+            'payments.*.due_date' => ['nullable', 'date'],
             'payments.*.amount' => ['required', 'numeric', 'min:0.01'],
             'payments.*.tendered' => ['nullable', 'numeric', 'min:0'],
             'customer_id' => ['nullable', 'exists:customers,id'],
@@ -177,6 +194,10 @@ class PosController extends Controller
             'service_mode' => ['nullable', 'in:dine_in,takeaway,delivery'],
             'employee_id' => ['nullable', 'exists:employees,id'],
             'delivery_agent_id' => ['nullable', 'exists:delivery_agents,id'],
+            'delivery_platform' => ['nullable', 'string', 'max:120'],
+            'ticket_discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'ticket_name' => ['nullable', 'string', 'max:120'],
+            'pos_table_id' => ['nullable', 'integer'],
         ]);
 
         try {
@@ -190,6 +211,10 @@ class PosController extends Controller
                     'service_mode' => $data['service_mode'] ?? null,
                     'employee_id' => $data['employee_id'] ?? null,
                     'delivery_agent_id' => $data['delivery_agent_id'] ?? null,
+                    'delivery_platform' => $data['delivery_platform'] ?? null,
+                    'ticket_discount_percent' => $data['ticket_discount_percent'] ?? 0,
+                    'ticket_name' => $data['ticket_name'] ?? null,
+                    'pos_table_id' => $data['pos_table_id'] ?? null,
                 ]
             );
 
@@ -239,9 +264,27 @@ class PosController extends Controller
             'items.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'customer_id' => ['nullable', 'exists:customers,id'],
             'notes' => ['nullable', 'string', 'max:500'],
+            'ticket_name' => ['nullable', 'string', 'max:120'],
+            'ticket_discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'service_mode' => ['nullable', 'in:dine_in,takeaway,delivery'],
+            'pos_table_id' => ['nullable', 'integer'],
+            'held_sale_id' => ['nullable', 'integer'],
         ]);
 
-        $sale = $this->pos->holdSale($data['items'], $data['customer_id'] ?? null, $data['notes'] ?? null);
+        try {
+            $sale = $this->pos->holdSale($data['items'], $data['customer_id'] ?? null, $data['notes'] ?? null, [
+                'ticket_name' => $data['ticket_name'] ?? null,
+                'ticket_discount_percent' => $data['ticket_discount_percent'] ?? 0,
+                'service_mode' => $data['service_mode'] ?? null,
+                'pos_table_id' => $data['pos_table_id'] ?? null,
+                'held_sale_id' => $data['held_sale_id'] ?? null,
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['message' => collect($e->errors())->flatten()->first()], 422);
+            }
+            throw $e;
+        }
 
         if ($request->wantsJson()) {
             return response()->json(['ok' => true, 'sale_id' => $sale->id, 'number' => $sale->number]);
@@ -260,6 +303,9 @@ class PosController extends Controller
         return response()->json([
             'payload' => $sale->held_payload,
             'number' => $sale->number,
+            'ticket_name' => $sale->ticket_name,
+            'pos_table_id' => $sale->pos_table_id,
+            'ticket_discount_percent' => (float) $sale->ticket_discount_percent,
             'sale_id' => $sale->id,
         ]);
     }

@@ -228,7 +228,7 @@ class InvoiceController extends Controller
         $this->ensureCompany($invoice);
 
         $data = $request->validate([
-            'method' => ['required', 'in:cash,card,bank_transfer,mobile,check,other'],
+            'method' => ['required', 'in:cash,card,instant_transfer,bank_transfer,mobile,check,effet,other'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'paid_at' => ['nullable', 'date'],
             'reference' => ['nullable', 'string', 'max:120'],

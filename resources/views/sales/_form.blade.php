@@ -12,9 +12,9 @@
 
     <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div>
-            <label class="gp-label">Client</label>
-            <select name="customer_id" class="gp-select w-full">
-                <option value="">Client de passage</option>
+            <label class="gp-label">Client *</label>
+            <select name="customer_id" class="gp-select w-full" required>
+                <option value="">— Choisir un client —</option>
                 @foreach($customers as $c)
                     <option value="{{ $c->id }}" {{ old('customer_id', $isEdit ? $sale->customer_id : '') == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
                 @endforeach
@@ -48,6 +48,27 @@
         <div>
             <label class="gp-label">Devise</label>
             <input type="text" name="currency" value="{{ old('currency', $isEdit ? $sale->currency : $currency) }}" class="gp-input w-full">
+        </div>
+        <div>
+            <label class="gp-label">Livraison prévue le</label>
+            <input type="date" name="expected_delivery_at" value="{{ old('expected_delivery_at', $isEdit ? $sale->expected_delivery_at?->format('Y-m-d') : '') }}" class="gp-input w-full">
+        </div>
+        <div>
+            <label class="gp-label">Téléphone de contact</label>
+            <input type="text" name="contact_phone" maxlength="40" value="{{ old('contact_phone', $isEdit ? $sale->contact_phone : '') }}" class="gp-input w-full" placeholder="Par défaut : téléphone du client">
+        </div>
+        <div>
+            <label class="gp-label">Livreur</label>
+            <select name="delivery_agent_id" class="gp-select w-full">
+                <option value="">—</option>
+                @foreach(($deliveryAgents ?? []) as $agent)
+                    <option value="{{ $agent->id }}" {{ old('delivery_agent_id', $isEdit ? $sale->delivery_agent_id : '') == $agent->id ? 'selected' : '' }}>{{ $agent->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div>
+            <label class="gp-label">Adresse de livraison</label>
+            <input type="text" name="delivery_address" maxlength="500" value="{{ old('delivery_address', $isEdit ? $sale->delivery_address : '') }}" class="gp-input w-full">
         </div>
         <div class="sm:col-span-2">
             <label class="gp-label">Notes</label>

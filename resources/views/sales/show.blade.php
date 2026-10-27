@@ -34,7 +34,7 @@
         @endcan
 
         @can('sales.return')
-            @if(in_array($sale->status, ['confirmed','delivered','completed']))
+            @if(in_array($sale->status, ['confirmed','delivered','completed']) && $sale->stock_state !== 'reserved')
                 <a href="{{ route('sales.return', $sale) }}" class="gp-btn-secondary !text-orange-600">Retour</a>
             @endif
         @endcan
@@ -51,6 +51,28 @@
     @if(session('success'))
         <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200">{{ session('success') }}</div>
     @endif
+
+    @if($errors->any())
+        <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200">
+            @foreach($errors->all() as $e)<p>{{ $e }}</p>@endforeach
+        </div>
+    @endif
+
+    <div class="mb-4 flex flex-wrap gap-2 text-xs">
+        @if($sale->stockStateLabel())
+            <span class="rounded-full px-3 py-1 font-semibold {{ $sale->stock_state === 'reserved' ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200' }}">Stock : {{ $sale->stockStateLabel() }}</span>
+        @endif
+        @if($sale->expected_delivery_at)
+            <span class="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-200">Livraison prévue : {{ $sale->expected_delivery_at->format('d/m/Y') }}</span>
+        @endif
+        @if($sale->delivery_agent_id)
+            <span class="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-200">Livreur : {{ optional(\App\Models\DeliveryAgent::find($sale->delivery_agent_id))->name }}</span>
+        @endif
+        @if($sale->contact_phone || $sale->customer?->phone)
+            <span class="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-200">Tél. : {{ $sale->contact_phone ?: $sale->customer?->phone }}</span>
+        @endif
+        <span class="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-200">Avance : {{ number_format((float) $sale->amount_paid, 2, ',', ' ') }} · Solde : {{ number_format($sale->balanceDue(), 2, ',', ' ') }}</span>
+    </div>
 
     {{-- Tabs --}}
     @php

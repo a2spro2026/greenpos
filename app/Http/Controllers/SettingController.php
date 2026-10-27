@@ -243,6 +243,18 @@ class SettingController extends Controller
                 'require_customer' => $request->boolean('require_customer'),
                 'show_stock_warning' => $request->boolean('show_stock_warning'),
                 'receipt_footer' => $request->string('receipt_footer')->toString(),
+                'categories_position' => in_array($request->input('categories_position'), ['bottom', 'left'], true)
+                    ? $request->input('categories_position')
+                    : 'bottom',
+                'delivery_platforms' => collect($request->input('delivery_platforms', []))
+                    ->filter(fn ($p) => is_array($p) && trim((string) ($p['name'] ?? '')) !== '')
+                    ->map(fn ($p) => [
+                        'name' => mb_substr(trim((string) $p['name']), 0, 120),
+                        'commission_percent' => max(0, min(100, (float) ($p['commission_percent'] ?? 0))),
+                        'active' => (bool) ($p['active'] ?? false),
+                    ])
+                    ->values()
+                    ->all(),
             ],
             'invoicing' => [
                 'default_payment_terms' => $request->string('default_payment_terms')->toString(),

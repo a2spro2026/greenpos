@@ -104,6 +104,14 @@ class StockService
                 ]);
             }
 
+            $reserved = (float) ($level->reserved_quantity ?? 0);
+            if ($type === 'out' && empty($data['consume_reserved']) && $reserved > 0 && $after < $reserved) {
+                $free = max(0, $before - $reserved);
+                throw ValidationException::withMessages([
+                    'quantity' => "Stock insuffisant : {$reserved} en « Sortie en cours » (disponible : {$free}).",
+                ]);
+            }
+
             $level->update([
                 'quantity' => $after,
                 'last_movement_at' => now(),
@@ -366,5 +374,42 @@ class StockService
         $inventory->update(['status' => 'cancelled']);
 
         return $inventory;
+    }
+
+    /**
+     * Réserve du stock en « Sortie en cours » (commande confirmée non livrée).
+     */
+    public function reserve(int $storeId, int $productId, float $qty): StockLevel
+    {
+        $company = Workspace::company();
+
+        return DB::transaction(function () use ($company, $storeId, $productId, $qty) {
+            $this->ensureLevel($company->id, $storeId, $productId);
+            $level = StockLevel::query()->where('product_id', $productId)->where('store_id', $storeId)->lockForUpdate()->first();
+            $free = (float) $level->quantity - (float) $level->reserved_quantity;
+            if ($qty > $free + 0.0001) {
+                $name = Product::query()->whereKey($productId)->value('name');
+                throw ValidationException::withMessages([
+                    'stock' => "Stock insuffisant pour {$name} (disponible : {$free}, demandé : {$qty}).",
+                ]);
+            }
+            $level->update(['reserved_quantity' => round((float) $level->reserved_quantity + $qty, 3)]);
+
+            return $level;
+        });
+    }
+
+    /**
+     * Libère une réservation (annulation, ou juste avant la sortie à la livraison).
+     */
+    public function releaseReservation(int $storeId, int $productId, float $qty): void
+    {
+        DB::transaction(function () use ($storeId, $productId, $qty) {
+            $level = StockLevel::query()->where('product_id', $productId)->where('store_id', $storeId)->lockForUpdate()->first();
+            if (! $level) {
+                return;
+            }
+            $level->update(['reserved_quantity' => max(0, round((float) $level->reserved_quantity - $qty, 3))]);
+        });
     }
 }
