@@ -62,30 +62,26 @@ class PosService
         ]);
     }
 
-    public function closeSession(PosSession $session, float $countedCash, ?string $notes = null): PosSession
+    public function closeSession(PosSession $session, float $countedCash, ?string $notes = null, ?array $breakdown = null): PosSession
     {
         if (! $session->isOpen()) {
             throw ValidationException::withMessages(['session' => 'Cette caisse est déjà clôturée.']);
         }
 
-        $cashSales = (float) $session->sales()
-            ->where('status', 'completed')
-            ->with('payments')
-            ->get()
-            ->sum(function (PosSale $sale) {
-                return $sale->payments
-                    ->filter(fn ($payment) => $payment->method === 'cash' && $this->workflow->countsAsSettled($payment))
-                    ->sum('amount');
-            });
-
-        $expected = (float) $session->opening_float + $cashSales;
+        $cash = app(PosCashService::class);
+        if ($breakdown) {
+            $countedCash = PosCashService::countBreakdown($breakdown);
+        }
+        $expected = $cash->expectedCash($session);
         $diff = $countedCash - $expected;
+        $cash->refreshTotals($session);
 
         $completed = $session->sales()->where('status', 'completed');
         $session->update([
             'status' => 'closed',
             'closed_by' => Workspace::user()?->id,
             'closing_counted' => $countedCash,
+            'closing_breakdown' => $breakdown ? array_filter($breakdown, fn ($q) => (int) $q > 0) : null,
             'expected_cash' => round($expected, 2),
             'cash_difference' => round($diff, 2),
             'total_sales' => (float) (clone $completed)->sum('total_ttc'),

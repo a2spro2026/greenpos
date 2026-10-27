@@ -31,11 +31,19 @@ class PosSession extends Model
         'closing_notes',
         'opened_at',
         'closed_at',
+        'opening_breakdown',
+        'closing_breakdown',
+        'cash_in_total',
+        'cash_out_total',
     ];
 
     protected function casts(): array
     {
         return [
+            'opening_breakdown' => 'array',
+            'closing_breakdown' => 'array',
+            'cash_in_total' => 'decimal:2',
+            'cash_out_total' => 'decimal:2',
             'opening_float' => 'decimal:2',
             'closing_counted' => 'decimal:2',
             'expected_cash' => 'decimal:2',

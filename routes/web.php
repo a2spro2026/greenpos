@@ -491,4 +491,5 @@ Route::middleware(['workspace', 'audit'])->group(function () {
     Route::get('/audit/{audit}/print', [AuditController::class, 'printOne'])->name('audit.print-one');
 
     require __DIR__.'/parity.php';
+    require __DIR__.'/rimal.php';
 });
