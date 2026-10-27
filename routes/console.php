@@ -13,3 +13,10 @@ Artisan::command('inspire', function () {
 Schedule::command(ProcessSaasBillingCommand::class)->dailyAt('02:15');
 Schedule::command('greenpos:system-backups --health')->dailyAt('03:00');
 Schedule::command(ProcessSystemBackupsCommand::class)->hourly();
+
+Artisan::command('reminders:send', function () {
+    $n = app(\App\Services\ReminderService::class)->processDue(200);
+    $this->info("Reminders sent/processed: {$n}");
+})->purpose('Send due messaging reminders');
+
+Schedule::command('reminders:send')->everyFiveMinutes();

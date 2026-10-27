@@ -65,6 +65,17 @@ class PosTicketController extends Controller
         return view('pos.tickets.print', compact('sale'));
     }
 
+    public function kitchen(PosSale $sale): View
+    {
+        $this->authorize('pos.reprint');
+        if ($sale->company_id !== Workspace::company()?->id) {
+            abort(404);
+        }
+        $sale->load(['lines', 'store']);
+
+        return view('pos.tickets.kitchen', compact('sale'));
+    }
+
     public function cancel(PosSale $sale): RedirectResponse
     {
         $this->authorize('pos.cancel');

@@ -433,49 +433,44 @@ class ModuleManagerService
      */
     public function sidebarNav(): array
     {
-        $groups = [];
-        $order = ['Pilotage', 'Ventes', 'Catalogue', 'Relation Client', 'Finance', 'Administration'];
-
-        foreach (ModuleCatalog::all() as $key => $meta) {
-            if ($key === 'modules') {
-                continue;
-            }
-            if (empty($meta['nav_group']) || empty($meta['route']) || empty($meta['nav_label'])) {
-                continue;
-            }
-            if (! empty($meta['coming_soon'])) {
-                continue;
-            }
-            if (! $this->isEnabled($key)) {
-                continue;
-            }
-            if (! empty($meta['permission']) && ! $this->roleAllows($meta['permission'])) {
-                continue;
-            }
-
-            if (! Route::has($meta['route'])) {
-                continue;
-            }
-
-            $group = $meta['nav_group'];
-            $groups[$group][] = [
-                'key' => $key,
-                'label' => $meta['nav_label'],
-                'route' => $meta['route'],
-                'route_is' => $meta['route_is'] ?? $meta['route'],
-                'icon' => $meta['icon'],
-            ];
-        }
-
         $result = [];
-        foreach ($order as $label) {
-            if (! empty($groups[$label])) {
-                $result[] = ['label' => $label, 'items' => $groups[$label]];
-                unset($groups[$label]);
+
+        foreach (\App\Support\SidebarStructure::groups() as $group) {
+            $items = [];
+
+            foreach ($group['items'] as $item) {
+                $module = $item['module'] ?? null;
+                if ($module && ! $this->isEnabled($module)) {
+                    continue;
+                }
+
+                $permission = $item['permission'] ?? null;
+                if ($permission && ! $this->roleAllows($permission)) {
+                    continue;
+                }
+
+                $route = $item['route'] ?? null;
+                if (! $route || ! Route::has($route)) {
+                    continue;
+                }
+
+                $items[] = [
+                    'key' => $module ?? $route,
+                    'label' => $item['label'],
+                    'route' => $route,
+                    'params' => $item['params'] ?? [],
+                    'query' => $item['query'] ?? [],
+                    'route_is' => $item['route_is'] ?? $route,
+                    'icon' => $item['icon'] ?? 'modules',
+                ];
             }
-        }
-        foreach ($groups as $label => $items) {
-            $result[] = ['label' => $label, 'items' => $items];
+
+            if ($items !== []) {
+                $result[] = [
+                    'label' => $group['label'],
+                    'items' => $items,
+                ];
+            }
         }
 
         return $result;

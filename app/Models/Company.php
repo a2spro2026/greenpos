@@ -26,7 +26,7 @@ class Company extends Model
     ];
 
     protected $fillable = [
-        'name', 'legal_name', 'logo_path', 'activity', 'currency', 'timezone', 'locale',
+        'name', 'shop_slug', 'shop_enabled', 'legal_name', 'logo_path', 'activity', 'currency', 'timezone', 'locale',
         'status', 'modules_setup_at', 'archived_at',
         'email', 'phone', 'website', 'address', 'city', 'region', 'postal_code', 'country',
         'ice', 'if_number', 'rc', 'patente', 'tax_id', 'cnss',
@@ -37,6 +37,7 @@ class Company extends Model
         return [
             'archived_at' => 'datetime',
             'modules_setup_at' => 'datetime',
+            'shop_enabled' => 'boolean',
         ];
     }
 

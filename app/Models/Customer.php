@@ -59,6 +59,8 @@ class Customer extends Model
         'payment_terms',
         'credit_limit',
         'balance',
+        'loyalty_points',
+        'loyalty_tier',
         'lifetime_revenue',
         'last_purchase_at',
         'tax_id',
@@ -70,6 +72,7 @@ class Customer extends Model
         return [
             'credit_limit' => 'decimal:2',
             'balance' => 'decimal:2',
+            'loyalty_points' => 'integer',
             'lifetime_revenue' => 'decimal:2',
             'last_purchase_at' => 'datetime',
         ];

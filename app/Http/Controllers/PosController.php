@@ -104,7 +104,11 @@ class PosController extends Controller
         $favorites = Product::query()
             ->forCompany($company->id)
             ->where('status', 'active')
-            ->orderByDesc('updated_at')
+            ->when(
+                \Illuminate\Support\Facades\Schema::hasColumn('products', 'is_favorite'),
+                fn ($q) => $q->orderByDesc('is_favorite')->orderByDesc('updated_at'),
+                fn ($q) => $q->orderByDesc('updated_at')
+            )
             ->limit(8)
             ->get(['id', 'name', 'sale_price', 'sku', 'tax_rate']);
 
@@ -118,7 +122,26 @@ class PosController extends Controller
 
         $catalog = $this->pos->catalog(null, null, 48);
 
-        return view('pos.terminal', compact('session', 'categories', 'customers', 'favorites', 'held', 'catalog'));
+        $employees = \App\Models\Employee::query()
+            ->forCompany($company->id)
+            ->where('status', 'active')
+            ->orderBy('first_name')
+            ->limit(80)
+            ->get(['id', 'first_name', 'last_name', 'code']);
+
+        $deliveryAgents = \App\Models\DeliveryAgent::query()
+            ->forCompany($company->id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->limit(80)
+            ->get(['id', 'name', 'type', 'commission_percent', 'commission_fixed']);
+
+        $serviceModes = \App\Models\Sale::SERVICE_MODES;
+
+        return view('pos.terminal', compact(
+            'session', 'categories', 'customers', 'favorites', 'held', 'catalog',
+            'employees', 'deliveryAgents', 'serviceModes'
+        ));
     }
 
     public function catalog(Request $request): JsonResponse
@@ -145,12 +168,15 @@ class PosController extends Controller
             'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'items.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'payments' => ['required', 'array', 'min:1'],
-            'payments.*.method' => ['required', 'in:cash,card,mobile'],
+            'payments.*.method' => ['required', 'in:cash,card,mobile,transfer,cheque,credit'],
             'payments.*.amount' => ['required', 'numeric', 'min:0.01'],
             'payments.*.tendered' => ['nullable', 'numeric', 'min:0'],
             'customer_id' => ['nullable', 'exists:customers,id'],
             'notes' => ['nullable', 'string', 'max:500'],
             'held_sale_id' => ['nullable', 'exists:pos_sales,id'],
+            'service_mode' => ['nullable', 'in:dine_in,takeaway,delivery'],
+            'employee_id' => ['nullable', 'exists:employees,id'],
+            'delivery_agent_id' => ['nullable', 'exists:delivery_agents,id'],
         ]);
 
         try {
@@ -158,7 +184,13 @@ class PosController extends Controller
                 $data['items'],
                 $data['payments'],
                 $data['customer_id'] ?? null,
-                $data['notes'] ?? null
+                $data['notes'] ?? null,
+                null,
+                [
+                    'service_mode' => $data['service_mode'] ?? null,
+                    'employee_id' => $data['employee_id'] ?? null,
+                    'delivery_agent_id' => $data['delivery_agent_id'] ?? null,
+                ]
             );
 
             if (! empty($data['held_sale_id'])) {
@@ -185,6 +217,9 @@ class PosController extends Controller
                 'number' => $sale->number,
                 'total' => $sale->total_ttc,
                 'receipt_url' => route('pos.tickets.show', $sale),
+                'kitchen_url' => in_array($sale->service_mode, ['dine_in', 'takeaway', 'delivery'], true)
+                    ? route('pos.tickets.kitchen', $sale)
+                    : null,
             ]);
         }
 

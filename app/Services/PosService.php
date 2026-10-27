@@ -92,8 +92,14 @@ class PosService
         return $session->fresh();
     }
 
-    public function completeSale(array $items, array $payments, ?int $customerId = null, ?string $notes = null, ?int $sessionId = null): PosSale
-    {
+    public function completeSale(
+        array $items,
+        array $payments,
+        ?int $customerId = null,
+        ?string $notes = null,
+        ?int $sessionId = null,
+        array $meta = []
+    ): PosSale {
         $company = Workspace::company();
         $store = Workspace::store();
         if (! $store) {
@@ -112,12 +118,31 @@ class PosService
             throw ValidationException::withMessages(['items' => 'Le panier est vide.']);
         }
 
-        return DB::transaction(function () use ($company, $store, $session, $items, $payments, $customerId, $notes) {
+        return DB::transaction(function () use ($company, $store, $session, $items, $payments, $customerId, $notes, $meta) {
             $computed = $this->computeLines($company->id, $items);
             $paymentTotal = collect($payments)->sum(fn ($p) => (float) ($p['amount'] ?? 0));
 
             if (round($paymentTotal, 2) < round($computed['total_ttc'], 2)) {
                 throw ValidationException::withMessages(['payments' => 'Paiement insuffisant.']);
+            }
+
+            $serviceMode = $meta['service_mode'] ?? null;
+            $deliveryAgentId = $meta['delivery_agent_id'] ?? null;
+            $employeeId = $meta['employee_id'] ?? null;
+            $deliveryCommission = null;
+
+            if ($serviceMode === 'delivery' && $deliveryAgentId) {
+                $agent = \App\Models\DeliveryAgent::query()
+                    ->forCompany($company->id)
+                    ->whereKey($deliveryAgentId)
+                    ->where('is_active', true)
+                    ->first();
+                if ($agent) {
+                    $deliveryCommission = round(
+                        ((float) $agent->commission_percent / 100) * $computed['total_ttc'] + (float) $agent->commission_fixed,
+                        2
+                    );
+                }
             }
 
             $seq = PosSale::query()->forCompany($company->id)->count() + 1;
@@ -127,6 +152,10 @@ class PosService
                 'pos_session_id' => $session->id,
                 'customer_id' => $customerId,
                 'cashier_id' => Workspace::user()?->id,
+                'employee_id' => $employeeId,
+                'delivery_agent_id' => $deliveryAgentId,
+                'delivery_commission' => $deliveryCommission,
+                'service_mode' => $serviceMode,
                 'number' => 'TK-'.now()->format('Ymd').'-'.str_pad((string) $seq, 4, '0', STR_PAD_LEFT),
                 'status' => 'completed',
                 'subtotal_ht' => $computed['subtotal_ht'],
@@ -177,6 +206,20 @@ class PosService
                 if (! array_key_exists($method, PosPayment::METHODS)) {
                     throw ValidationException::withMessages(['payments' => 'Mode de paiement invalide.']);
                 }
+
+                if ($method === 'credit') {
+                    if (! $customerId) {
+                        throw ValidationException::withMessages(['customer_id' => 'Client requis pour un paiement à crédit.']);
+                    }
+                    $creditCustomer = Customer::query()->forCompany($company->id)->whereKey($customerId)->firstOrFail();
+                    $available = (float) $creditCustomer->credit_limit - (float) $creditCustomer->balance;
+                    if ($amount > $available + 0.001) {
+                        throw ValidationException::withMessages([
+                            'payments' => "Crédit insuffisant (disponible : {$available}).",
+                        ]);
+                    }
+                }
+
                 $tendered = isset($payment['tendered']) ? (float) $payment['tendered'] : null;
                 PosPayment::query()->create([
                     'pos_sale_id' => $sale->id,
@@ -193,10 +236,17 @@ class PosService
             if ($customerId) {
                 $customer = Customer::query()->forCompany($company->id)->whereKey($customerId)->first();
                 if ($customer) {
+                    $creditPaid = collect($payments)
+                        ->filter(fn ($p) => ($p['method'] ?? '') === 'credit')
+                        ->sum(fn ($p) => (float) ($p['amount'] ?? 0));
+
                     $customer->update([
                         'lifetime_revenue' => (float) $customer->lifetime_revenue + $computed['total_ttc'],
+                        'balance' => (float) $customer->balance + $creditPaid,
                         'last_purchase_at' => now(),
                     ]);
+
+                    app(LoyaltyService::class)->earnFromSale($customer->fresh(), (float) $computed['total_ttc']);
                 }
             }
 

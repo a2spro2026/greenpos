@@ -136,6 +136,35 @@
                     @endforeach
                 </select>
             </div>
+            <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <label class="block">
+                    <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Service</span>
+                    <select id="pos-service-mode" class="h-9 w-full rounded-xl border-0 bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
+                        <option value="">—</option>
+                        @foreach(($serviceModes ?? []) as $key => $label)
+                            <option value="{{ $key }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Employé</span>
+                    <select id="pos-employee" class="h-9 w-full rounded-xl border-0 bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
+                        <option value="">—</option>
+                        @foreach(($employees ?? []) as $emp)
+                            <option value="{{ $emp->id }}">{{ $emp->first_name }} {{ $emp->last_name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Livreur</span>
+                    <select id="pos-delivery-agent" class="h-9 w-full rounded-xl border-0 bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
+                        <option value="">—</option>
+                        @foreach(($deliveryAgents ?? []) as $agent)
+                            <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            </div>
         </div>
 
         <div id="pos-cart-lines" class="flex-1 space-y-2 overflow-y-auto p-3">
@@ -204,6 +233,7 @@
             <button type="button" data-method="cash" class="pay-method rounded-2xl bg-emerald-500 py-3 text-sm font-bold text-slate-950">Espèces</button>
             <button type="button" data-method="card" class="pay-method rounded-2xl bg-white/5 py-3 text-sm font-bold ring-1 ring-white/10">Carte</button>
             <button type="button" data-method="mobile" class="pay-method rounded-2xl bg-white/5 py-3 text-sm font-bold ring-1 ring-white/10">Mobile</button>
+            <button type="button" data-method="credit" class="pay-method rounded-2xl bg-white/5 py-3 text-sm font-bold ring-1 ring-white/10">Crédit</button>
         </div>
 
         <div id="pay-cash-block" class="mb-4 space-y-3">
@@ -499,6 +529,9 @@
             customer_id: el.customer.value || null,
             notes: el.notes.value || null,
             held_sale_id: heldSaleId,
+            service_mode: document.getElementById('pos-service-mode')?.value || null,
+            employee_id: document.getElementById('pos-employee')?.value || null,
+            delivery_agent_id: document.getElementById('pos-delivery-agent')?.value || null,
         };
 
         document.getElementById('pay-confirm').disabled = true;
@@ -525,6 +558,9 @@
             toast('Ticket ' + data.number + ' validé');
             if (data.receipt_url) {
                 setTimeout(() => window.open(data.receipt_url, '_blank'), 300);
+            }
+            if (data.kitchen_url) {
+                setTimeout(() => window.open(data.kitchen_url, '_blank'), 500);
             }
             fetchCatalog(el.search.value.trim());
         } catch (e) {
@@ -759,6 +795,23 @@
     renderProducts(products);
     renderCart();
 })();
+</script>
+<script>
+window.addEventListener('online', async () => {
+    const q = JSON.parse(localStorage.getItem('pos-offline-queue') || '[]');
+    if (!q.length) return;
+    const left = [];
+    for (const job of q) {
+        try {
+            const res = await fetch(job.url, { method: 'POST', headers: job.headers, body: JSON.stringify(job.body) });
+            if (!res.ok) left.push(job);
+        } catch (e) { left.push(job); }
+    }
+    localStorage.setItem('pos-offline-queue', JSON.stringify(left));
+});
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>

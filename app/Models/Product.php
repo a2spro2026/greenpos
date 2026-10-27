@@ -64,6 +64,11 @@ class Product extends Model
         'discount_starts_at',
         'discount_ends_at',
         'status',
+        'is_favorite',
+        'is_on_sale',
+        'price_type',
+        'is_taxable',
+        'color_tag',
         'track_stock',
         'image_path',
         'meta',
@@ -79,6 +84,9 @@ class Product extends Model
             'discount_starts_at' => 'datetime',
             'discount_ends_at' => 'datetime',
             'track_stock' => 'boolean',
+            'is_favorite' => 'boolean',
+            'is_on_sale' => 'boolean',
+            'is_taxable' => 'boolean',
             'meta' => 'array',
         ];
     }

@@ -11,6 +11,9 @@ class PosPayment extends Model
         'cash' => 'Espèces',
         'card' => 'Carte bancaire',
         'mobile' => 'Paiement mobile',
+        'transfer' => 'Virement',
+        'cheque' => 'Chèque',
+        'credit' => 'Crédit client',
     ];
 
     protected $fillable = [

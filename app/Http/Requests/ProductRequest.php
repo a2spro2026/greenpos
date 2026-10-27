@@ -67,6 +67,11 @@ class ProductRequest extends FormRequest
             'discount_ends_at' => ['nullable', 'date', 'after_or_equal:discount_starts_at'],
             'status' => ['required', Rule::in(array_keys(Product::STATUSES))],
             'track_stock' => ['sometimes', 'boolean'],
+            'is_favorite' => ['sometimes', 'boolean'],
+            'is_on_sale' => ['sometimes', 'boolean'],
+            'is_taxable' => ['sometimes', 'boolean'],
+            'price_type' => ['nullable', Rule::in(['fixed', 'variable'])],
+            'color_tag' => ['nullable', 'string', 'max:32'],
             'image' => ['nullable', 'image', 'max:4096'],
             'store_ids' => ['nullable', 'array'],
             'store_ids.*' => [
@@ -98,6 +103,9 @@ class ProductRequest extends FormRequest
     {
         $this->merge([
             'track_stock' => $this->boolean('track_stock'),
+            'is_favorite' => $this->boolean('is_favorite'),
+            'is_on_sale' => $this->boolean('is_on_sale'),
+            'is_taxable' => $this->boolean('is_taxable', true),
             'purchase_price' => $this->input('purchase_price', 0),
         ]);
     }

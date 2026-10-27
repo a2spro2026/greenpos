@@ -27,8 +27,13 @@ class PosSale extends Model
         'pos_session_id',
         'customer_id',
         'cashier_id',
+        'employee_id',
+        'delivery_agent_id',
+        'delivery_commission',
         'number',
         'status',
+        'service_mode',
+        'ticket_name',
         'subtotal_ht',
         'tax_total',
         'discount_total',
@@ -78,6 +83,11 @@ class PosSale extends Model
     public function cashier(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cashier_id');
+    }
+
+    public function deliveryAgent(): BelongsTo
+    {
+        return $this->belongsTo(DeliveryAgent::class, 'delivery_agent_id');
     }
 
     public function lines(): HasMany

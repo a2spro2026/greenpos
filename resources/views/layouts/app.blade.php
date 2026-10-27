@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard') — {{ ($workspaceBranding['trade_name'] ?? null) ?: 'GreenPOS' }}</title>
+    <meta name="theme-color" content="#0d9488">
+    <link rel="manifest" href="/manifest.webmanifest">
     @if(!empty($workspaceBrandingFavicon))
         <link rel="icon" href="{{ $workspaceBrandingFavicon }}">
     @endif
@@ -773,5 +775,12 @@
     </script>
     @include('ai.widget')
     @include('partials.logout-modal')
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js').catch(function () {});
+            });
+        }
+    </script>
 </body>
 </html>

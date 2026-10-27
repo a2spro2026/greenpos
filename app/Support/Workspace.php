@@ -490,6 +490,29 @@ class Workspace
             'documents.download' => ['owner', 'admin', 'manager', 'cashier', 'storekeeper', 'sales', 'accountant', 'employee'],
             'documents.archive' => ['owner', 'admin', 'manager'],
             'documents.folders' => ['owner', 'admin', 'manager'],
+
+            'hr.view' => ['owner', 'admin', 'manager', 'accountant'],
+            'hr.create' => ['owner', 'admin', 'manager'],
+            'hr.update' => ['owner', 'admin', 'manager'],
+            'hr.delete' => ['owner', 'admin'],
+            'hr.export' => ['owner', 'admin', 'manager', 'accountant'],
+            'hr.print' => ['owner', 'admin', 'manager', 'accountant'],
+            'hr.validate' => ['owner', 'admin', 'manager'],
+
+            'accounting.view' => ['owner', 'admin', 'manager', 'accountant'],
+            'accounting.create' => ['owner', 'admin', 'accountant'],
+            'accounting.update' => ['owner', 'admin', 'accountant'],
+            'accounting.delete' => ['owner', 'admin', 'accountant'],
+            'accounting.export' => ['owner', 'admin', 'accountant'],
+            'accounting.print' => ['owner', 'admin', 'accountant'],
+            'accounting.validate' => ['owner', 'admin', 'accountant'],
+
+            'delivery.view' => ['owner', 'admin', 'manager', 'sales', 'cashier'],
+            'delivery.create' => ['owner', 'admin', 'manager', 'sales'],
+            'delivery.update' => ['owner', 'admin', 'manager', 'sales'],
+            'delivery.delete' => ['owner', 'admin', 'manager'],
+            'delivery.export' => ['owner', 'admin', 'manager'],
+            'delivery.print' => ['owner', 'admin', 'manager', 'sales'],
         ];
 
         return in_array($role, $matrix[$ability] ?? [], true);

@@ -16,11 +16,20 @@ class SalePayment extends Model
         'other' => 'Autre',
     ];
 
-    protected $fillable = ['sale_id', 'created_by', 'method', 'amount', 'paid_at', 'reference', 'notes'];
+    protected $fillable = [
+        'sale_id', 'created_by', 'method', 'amount', 'paid_at', 'reference', 'notes',
+        'status', 'is_deferred', 'due_at', 'collected_at', 'collection_notes',
+    ];
 
     protected function casts(): array
     {
-        return ['amount' => 'decimal:2', 'paid_at' => 'date'];
+        return [
+            'amount' => 'decimal:2',
+            'paid_at' => 'date',
+            'due_at' => 'datetime',
+            'collected_at' => 'datetime',
+            'is_deferred' => 'boolean',
+        ];
     }
 
     public function sale(): BelongsTo { return $this->belongsTo(Sale::class); }

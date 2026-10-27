@@ -61,13 +61,13 @@ class StockService
             throw ValidationException::withMessages(['type' => 'Type de mouvement invalide.']);
         }
 
-        if ($type === 'transfer') {
-            throw ValidationException::withMessages(['type' => 'Les transferts seront disponibles en V2.']);
-        }
-
         $qtyInput = (float) $data['quantity'];
         if ($type !== 'adjustment' && $qtyInput <= 0) {
             throw ValidationException::withMessages(['quantity' => 'La quantité doit être positive.']);
+        }
+
+        if ($type === 'transfer') {
+            return $this->applyTransfer($company->id, $product, $data, $qtyInput);
         }
 
         return DB::transaction(function () use ($company, $product, $data, $type, $qtyInput) {
@@ -125,6 +125,111 @@ class StockService
                 'comment' => $data['comment'] ?? null,
                 'related_store_id' => $data['related_store_id'] ?? null,
                 'moved_at' => $data['moved_at'] ?? now(),
+            ]);
+        });
+    }
+
+    /**
+     * Transfer stock between two stores: decrease source, increase destination.
+     * Expects destination_store_id (or related_store_id as alias).
+     */
+    protected function applyTransfer(int $companyId, Product $product, array $data, float $qtyInput): StockMovement
+    {
+        $fromStoreId = (int) ($data['store_id'] ?? 0);
+        $toStoreId = (int) ($data['destination_store_id'] ?? $data['related_store_id'] ?? 0);
+
+        if ($fromStoreId <= 0 || $toStoreId <= 0) {
+            throw ValidationException::withMessages([
+                'destination_store_id' => 'Boutique destination requise pour un transfert.',
+            ]);
+        }
+
+        if ($fromStoreId === $toStoreId) {
+            throw ValidationException::withMessages([
+                'destination_store_id' => 'La boutique destination doit être différente de la source.',
+            ]);
+        }
+
+        $qty = abs($qtyInput);
+
+        return DB::transaction(function () use ($companyId, $product, $data, $fromStoreId, $toStoreId, $qty) {
+            $source = StockLevel::query()
+                ->where('product_id', $product->id)
+                ->where('store_id', $fromStoreId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $source) {
+                $source = $this->ensureLevel($companyId, $fromStoreId, $product->id);
+                $source = StockLevel::query()->whereKey($source->id)->lockForUpdate()->first();
+            }
+
+            $sourceBefore = (float) $source->quantity;
+            $sourceAfter = $sourceBefore - $qty;
+
+            if ($sourceAfter < 0) {
+                throw ValidationException::withMessages([
+                    'quantity' => "Stock insuffisant pour transfert (disponible : {$sourceBefore}).",
+                ]);
+            }
+
+            $dest = StockLevel::query()
+                ->where('product_id', $product->id)
+                ->where('store_id', $toStoreId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $dest) {
+                $dest = $this->ensureLevel($companyId, $toStoreId, $product->id);
+                $dest = StockLevel::query()->whereKey($dest->id)->lockForUpdate()->first();
+            }
+
+            $destBefore = (float) $dest->quantity;
+            $destAfter = $destBefore + $qty;
+
+            $source->update(['quantity' => $sourceAfter, 'last_movement_at' => now()]);
+            $dest->update(['quantity' => $destAfter, 'last_movement_at' => now()]);
+
+            $unitCost = $data['unit_cost'] ?? $product->purchase_price;
+            $reference = $data['reference'] ?? null;
+            $comment = $data['comment'] ?? null;
+            $movedAt = $data['moved_at'] ?? now();
+            $userId = Workspace::user()?->id;
+
+            StockMovement::query()->create([
+                'company_id' => $companyId,
+                'store_id' => $toStoreId,
+                'product_id' => $product->id,
+                'product_variant_id' => $data['product_variant_id'] ?? null,
+                'user_id' => $userId,
+                'inventory_id' => $data['inventory_id'] ?? null,
+                'type' => 'in',
+                'quantity' => $qty,
+                'quantity_before' => $destBefore,
+                'quantity_after' => $destAfter,
+                'unit_cost' => $unitCost,
+                'reference' => $reference,
+                'comment' => $comment ?: 'Transfert entrant',
+                'related_store_id' => $fromStoreId,
+                'moved_at' => $movedAt,
+            ]);
+
+            return StockMovement::query()->create([
+                'company_id' => $companyId,
+                'store_id' => $fromStoreId,
+                'product_id' => $product->id,
+                'product_variant_id' => $data['product_variant_id'] ?? null,
+                'user_id' => $userId,
+                'inventory_id' => $data['inventory_id'] ?? null,
+                'type' => 'transfer',
+                'quantity' => $qty,
+                'quantity_before' => $sourceBefore,
+                'quantity_after' => $sourceAfter,
+                'unit_cost' => $unitCost,
+                'reference' => $reference,
+                'comment' => $comment ?: 'Transfert sortant',
+                'related_store_id' => $toStoreId,
+                'moved_at' => $movedAt,
             ]);
         });
     }

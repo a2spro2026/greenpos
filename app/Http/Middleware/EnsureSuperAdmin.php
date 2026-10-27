@@ -28,7 +28,11 @@ class EnsureSuperAdmin
             }
         }
 
-        if (! $user || ! $user->is_platform_admin) {
+        if (! $user) {
+            return redirect()->guest(route('admin.login'));
+        }
+
+        if (! $user->is_platform_admin) {
             abort(403, 'Accès Super Administration réservé.');
         }
 
