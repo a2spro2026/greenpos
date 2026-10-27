@@ -180,7 +180,7 @@
                     <select id="pos-delivery-platform" class="h-9 w-full rounded-xl border-0 bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10" title="Livraison par plateforme">
                         <option value="">— (livraison interne)</option>
                         @foreach(($deliveryPlatforms ?? []) as $platform)
-                            <option value="{{ $platform['name'] }}">{{ $platform['name'] }} ({{ rtrim(rtrim(number_format((float) ($platform['commission_percent'] ?? 0), 2, '.', ''), '0'), '.') }}%)</option>
+                            <option value="{{ $platform->id }}">{{ $platform->name }} ({{ $platform->commission_type === 'fixed' ? number_format((float) $platform->commission_value, 2, ',', ' ') : rtrim(rtrim(number_format((float) $platform->commission_value, 2, '.', ''), '0'), '.').'%' }})</option>
                         @endforeach
                     </select>
                 </label>
@@ -620,7 +620,7 @@
             service_mode: document.getElementById('pos-service-mode')?.value || null,
             employee_id: document.getElementById('pos-employee')?.value || null,
             delivery_agent_id: document.getElementById('pos-delivery-agent')?.value || null,
-            delivery_platform: document.getElementById('pos-delivery-platform')?.value || null,
+            delivery_platform_id: document.getElementById('pos-delivery-platform')?.value || null,
             ticket_discount_percent: ticketDiscount(),
             ticket_name: document.getElementById('pos-ticket-name')?.value || null,
             pos_table_id: document.getElementById('pos-table')?.value || null,

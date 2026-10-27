@@ -47,6 +47,18 @@ class ProductRequest extends FormRequest
                 'nullable',
                 Rule::exists('categories', 'id')->where(fn ($q) => $q->where('company_id', $companyId)),
             ],
+            'subcategory_id' => [
+                'nullable',
+                Rule::exists('subcategories', 'id')->where(fn ($q) => $q->where('company_id', $companyId)),
+            ],
+            'measure_unit_id' => [
+                'nullable',
+                Rule::exists('measure_units', 'id')->where(fn ($q) => $q->where('company_id', $companyId)),
+            ],
+            'option_ids' => ['nullable', 'array'],
+            'option_ids.*' => [
+                Rule::exists('product_options', 'id')->where(fn ($q) => $q->where('company_id', $companyId)),
+            ],
             'brand_id' => [
                 'nullable',
                 Rule::exists('brands', 'id')->where(fn ($q) => $q->where('company_id', $companyId)),
@@ -55,7 +67,7 @@ class ProductRequest extends FormRequest
                 'nullable',
                 Rule::exists('suppliers', 'id')->where(fn ($q) => $q->where('company_id', $companyId)),
             ],
-            'unit' => ['required', Rule::in(array_keys(Product::UNITS))],
+            'unit' => ['required_without:measure_unit_id', 'nullable', 'string', 'max:32'],
             'short_description' => ['nullable', 'string', 'max:500'],
             'description' => ['nullable', 'string'],
             'purchase_price' => ['nullable', 'numeric', 'min:0'],

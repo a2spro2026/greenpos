@@ -6,6 +6,9 @@
         ['route' => 'crm.opportunities.index', 'label' => 'Opportunités'],
         ['route' => 'crm.activities.index', 'label' => 'Activités'],
         ['route' => 'crm.calendar', 'label' => 'Calendrier'],
+        ['route' => 'crm.incidents.index', 'label' => 'Incidents'],
+        ['route' => 'crm.automations.index', 'label' => 'Automatisations'],
+        ['route' => 'crm.automation-rules.index', 'label' => 'Règles auto (stock)'],
         ['route' => 'crm.emails.index', 'label' => 'Emails'],
         ['route' => 'crm.reports', 'label' => 'Rapports'],
     ] as $item)

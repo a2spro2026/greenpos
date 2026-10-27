@@ -13,6 +13,15 @@
         @can('import', App\Models\Product::class)
             <a href="{{ route('products.import.form') }}" class="gp-btn-secondary">Importer</a>
         @endcan
+        @can('products.options')
+            <a href="{{ route('products.options.index') }}" class="gp-btn-secondary">Options & variantes</a>
+        @endcan
+        @can('products.measure_units')
+            <a href="{{ route('products.units.index') }}" class="gp-btn-secondary">Unités</a>
+        @endcan
+        @can('products.subcategories')
+            <a href="{{ route('products.subcategories.index') }}" class="gp-btn-secondary">Sous-catégories</a>
+        @endcan
         @can('create', App\Models\Product::class)
             <a href="{{ route('products.create') }}" class="gp-btn-primary">Nouveau produit</a>
         @endcan

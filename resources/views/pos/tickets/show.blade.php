@@ -11,6 +11,12 @@
         @can('pos.reprint')
             @if($sale->status === 'completed')
                 <a href="{{ route('pos.tickets.print', $sale) }}" target="_blank" class="gp-btn-secondary">Réimprimer</a>
+                <a href="{{ route('pos.tickets.kitchen', $sale) }}" target="_blank" class="gp-btn-secondary">Cuisine</a>
+            @endif
+        @endcan
+        @can('sales.refund')
+            @if($sale->status === 'completed')
+                <a href="{{ route('pos.tickets.refund', $sale) }}" class="gp-btn-secondary">Rembourser</a>
             @endif
         @endcan
         @can('pos.cancel')
@@ -79,6 +85,12 @@
                 <h2 class="mb-3 text-sm font-bold">Infos</h2>
                 <dl class="space-y-2 text-sm">
                     <div class="flex justify-between gap-2"><dt class="text-gp-muted">Statut</dt><dd><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $sale->statusColor() }}">{{ $sale->statusLabel() }}</span></dd></div>
+                    @if($sale->payment_status_code)
+                        <div class="flex justify-between gap-2"><dt class="text-gp-muted">Paiement</dt><dd>{{ $sale->paymentStatusLabel() }}</dd></div>
+                    @endif
+                    @if($sale->ticket_name || $sale->service_mode)
+                        <div class="flex justify-between gap-2"><dt class="text-gp-muted">Ticket</dt><dd class="text-right">{{ $sale->ticket_name }}@if($sale->service_mode) · {{ $sale->service_mode }}@endif</dd></div>
+                    @endif
                     <div class="flex justify-between gap-2"><dt class="text-gp-muted">Client</dt><dd class="text-right">{{ $sale->customer?->name ?? 'Passage' }}</dd></div>
                     <div class="flex justify-between gap-2"><dt class="text-gp-muted">Caissier</dt><dd>{{ $sale->cashier?->name ?? '—' }}</dd></div>
                     <div class="flex justify-between gap-2"><dt class="text-gp-muted">Boutique</dt><dd>{{ $sale->store?->name }}</dd></div>
@@ -93,13 +105,21 @@
                     <h2 class="mb-3 text-sm font-bold">Paiements</h2>
                     <ul class="space-y-2 text-sm">
                         @foreach($sale->payments as $pay)
-                            <li class="flex justify-between">
-                                <span>{{ $pay->methodLabel() }}</span>
+                            <li class="flex justify-between gap-2">
+                                <span>{{ $pay->methodLabel() }}@if($pay->is_deferred) <span class="text-xs text-amber-600">différé · {{ $pay->collection_status }}</span>@endif</span>
                                 <span class="font-bold">{{ number_format($pay->amount, 2, ',', ' ') }}</span>
                             </li>
                             @if($pay->method === 'cash' && $pay->change_amount > 0)
                                 <li class="flex justify-between text-gp-muted"><span>Monnaie</span><span>{{ number_format($pay->change_amount, 2, ',', ' ') }}</span></li>
                             @endif
+                            @can('payments.collect')
+                                @if($pay->is_deferred && in_array($pay->collection_status, ['scheduled', 'pending', 'overdue'], true))
+                                    <li class="flex flex-wrap gap-2 pb-2">
+                                        <form method="post" action="{{ route('pos.payments.collect', $pay) }}">@csrf<button class="text-xs font-bold text-emerald-600">Encaisser</button></form>
+                                        <form method="post" action="{{ route('pos.payments.cancel', $pay) }}">@csrf<button class="text-xs font-bold text-rose-600">Annuler</button></form>
+                                    </li>
+                                @endif
+                            @endcan
                         @endforeach
                     </ul>
                 </article>

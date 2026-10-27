@@ -12,6 +12,7 @@ class PosSaleLine extends Model
         'product_id',
         'product_name',
         'sku',
+        'options_payload',
         'quantity',
         'unit_price',
         'discount_percent',
@@ -19,6 +20,7 @@ class PosSaleLine extends Model
         'line_subtotal',
         'line_tax',
         'line_total',
+        'returned_quantity',
         'sort_order',
     ];
 
@@ -32,6 +34,8 @@ class PosSaleLine extends Model
             'line_subtotal' => 'decimal:2',
             'line_tax' => 'decimal:2',
             'line_total' => 'decimal:2',
+            'returned_quantity' => 'decimal:3',
+            'options_payload' => 'array',
         ];
     }
 

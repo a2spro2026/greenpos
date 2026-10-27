@@ -10,6 +10,8 @@
         ['key' => 'pos', 'label' => 'POS & Caisse', 'route' => 'settings.section', 'params' => ['section' => 'pos'], 'match' => null],
         ['key' => 'invoicing', 'label' => 'Facturation', 'route' => 'settings.section', 'params' => ['section' => 'invoicing'], 'match' => null],
         ['key' => 'payments', 'label' => 'Paiements', 'route' => 'settings.section', 'params' => ['section' => 'payments'], 'match' => null],
+        ['key' => 'lists', 'label' => 'Listes personnalisées', 'route' => 'settings.lists.index', 'match' => 'settings.lists.*'],
+        ['key' => 'platforms', 'label' => 'Plateformes livraison', 'route' => 'settings.delivery-platforms.index', 'match' => 'settings.delivery-platforms.*'],
         ['key' => 'notifications', 'label' => 'Notifications', 'route' => 'settings.section', 'params' => ['section' => 'notifications'], 'match' => null],
         ['key' => 'security', 'label' => 'Sécurité', 'route' => 'settings.section', 'params' => ['section' => 'security'], 'match' => null],
         ['key' => 'backup', 'label' => 'Sauvegarde', 'route' => 'system.backups', 'match' => 'system.*'],
@@ -28,8 +30,14 @@
                 @php
                     $href = isset($item['params']) ? route($item['route'], $item['params']) : route($item['route']);
                     $active = ($item['key'] === $current) || (!empty($item['match']) && request()->routeIs($item['match']));
-                    if ($item['key'] !== 'index' && $item['key'] !== 'company' && $item['key'] !== 'stores' && $item['key'] !== 'branding' && $item['key'] !== 'backup') {
+                    if ($item['key'] !== 'index' && $item['key'] !== 'company' && $item['key'] !== 'stores' && $item['key'] !== 'branding' && $item['key'] !== 'backup' && $item['key'] !== 'lists' && $item['key'] !== 'platforms') {
                         $active = ($current === $item['key']);
+                    }
+                    if ($item['key'] === 'lists') {
+                        $active = request()->routeIs('settings.lists.*');
+                    }
+                    if ($item['key'] === 'platforms') {
+                        $active = request()->routeIs('settings.delivery-platforms.*');
                     }
                     if ($item['key'] === 'branding') {
                         $active = request()->routeIs('branding.*');

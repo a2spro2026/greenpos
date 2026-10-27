@@ -63,7 +63,6 @@ class SettingsDefaults
                 'show_stock_warning' => true,
                 'receipt_footer' => 'Merci de votre visite',
                 'categories_position' => 'bottom',
-                'delivery_platforms' => [],
             ],
             'invoicing' => [
                 'default_payment_terms' => '30 jours',

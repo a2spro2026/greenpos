@@ -46,8 +46,8 @@ class Sale extends Model
         'company_id', 'store_id', 'customer_id', 'salesperson_id',
         'employee_id', 'delivery_agent_id',
         'created_by', 'updated_by', 'pos_sale_id', 'quote_id', 'invoice_id',
-        'number', 'origin', 'service_mode', 'status', 'reference', 'currency',
-        'sold_at', 'notes', 'delivery_address', 'ticket_name', 'delivery_commission',
+        'number', 'origin', 'service_mode', 'status', 'payment_status_code', 'reference', 'currency',
+        'sold_at', 'appointment_at', 'pickup_date', 'notes', 'delivery_address', 'ticket_name', 'ticket_group', 'delivery_commission',
         'expected_delivery_at', 'stock_state', 'contact_phone',
         'subtotal_ht', 'tax_total', 'discount_total', 'total_ttc',
         'amount_paid', 'amount_returned',
@@ -70,6 +70,8 @@ class Sale extends Model
             'delivered_at' => 'datetime',
             'completed_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'appointment_at' => 'datetime',
+            'pickup_date' => 'date',
         ];
     }
 
@@ -86,6 +88,12 @@ class Sale extends Model
     public function lines(): HasMany { return $this->hasMany(SaleLine::class)->orderBy('sort_order'); }
     public function payments(): HasMany { return $this->hasMany(SalePayment::class)->orderByDesc('paid_at'); }
     public function returns(): HasMany { return $this->hasMany(SaleReturn::class)->latest(); }
+    public function refunds(): HasMany { return $this->hasMany(SaleRefund::class)->latest(); }
+
+    public function paymentStatusLabel(): string
+    {
+        return \App\Services\SalePaymentWorkflowService::STATUSES[$this->payment_status_code] ?? ($this->payment_status_code ?: 'Impayé');
+    }
     public function logs(): HasMany { return $this->hasMany(SaleLog::class)->latest(); }
 
     public function scopeForCompany(Builder $query, int $companyId): Builder

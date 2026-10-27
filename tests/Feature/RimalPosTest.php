@@ -80,18 +80,21 @@ class RimalPosTest extends TestCase
         );
     }
 
-    public function test_delivery_platform_commission_from_settings(): void
+    public function test_delivery_platform_commission_from_table(): void
     {
-        app(SettingService::class)->saveGroup('pos', [
-            'delivery_platforms' => [['name' => 'Glovo', 'commission_percent' => 25, 'active' => true]],
+        $glovo = \App\Models\DeliveryPlatform::query()->create([
+            'company_id' => $this->company->id, 'name' => 'Glovo', 'code' => 'glovo', 'kind' => 'external',
+            'is_active' => true, 'commission_type' => 'percent', 'commission_value' => 25,
         ]);
         $sale = app(PosService::class)->completeSale(
             [['product_id' => $this->product->id, 'quantity' => 1]],
             [['method' => 'card', 'amount' => 120]],
             null, null, null,
-            ['service_mode' => 'delivery', 'delivery_platform' => 'Glovo']
+            ['delivery_platform_id' => $glovo->id]
         );
         $this->assertSame('Glovo', $sale->delivery_platform);
+        $this->assertSame('delivery', $sale->service_mode);
+        $this->assertSame($glovo->id, $sale->delivery_platform_id);
         $this->assertSame('30.00', (string) $sale->platform_commission);
 
         $this->expectException(ValidationException::class);
@@ -99,8 +102,29 @@ class RimalPosTest extends TestCase
             [['product_id' => $this->product->id, 'quantity' => 1]],
             [['method' => 'card', 'amount' => 120]],
             null, null, null,
-            ['service_mode' => 'delivery', 'delivery_platform' => 'Inconnue']
+            ['delivery_platform_id' => 999999]
         );
+    }
+
+    public function test_offline_sale_is_idempotent_by_client_uuid(): void
+    {
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+        $pos = app(PosService::class);
+        $a = $pos->completeSale([['product_id' => $this->product->id, 'quantity' => 1]], [['method' => 'cash', 'amount' => 120]], null, null, null, ['client_uuid' => $uuid]);
+        $b = $pos->completeSale([['product_id' => $this->product->id, 'quantity' => 1]], [['method' => 'cash', 'amount' => 120]], null, null, null, ['client_uuid' => $uuid]);
+        $this->assertSame($a->id, $b->id);
+        $this->assertEquals(9, (float) $this->level()->quantity);
+    }
+
+    public function test_future_cheque_is_deferred_for_collection(): void
+    {
+        $sale = app(PosService::class)->completeSale(
+            [['product_id' => $this->product->id, 'quantity' => 1]],
+            [['method' => 'cheque', 'amount' => 120, 'reference' => 'CHQ-9', 'due_date' => now()->addDays(10)->toDateString()]]
+        );
+        $pay = $sale->payments->first();
+        $this->assertTrue((bool) $pay->is_deferred);
+        $this->assertSame('scheduled', $pay->collection_status);
     }
 
     public function test_saved_ticket_with_name_and_table_is_updated_in_place(): void

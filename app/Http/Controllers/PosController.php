@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Customer;
+use App\Models\DeliveryPlatform;
 use App\Models\PosPayment;
 use App\Models\PosSale;
 use App\Models\PosSession;
 use App\Models\Product;
+use App\Services\CustomListService;
 use App\Services\PosService;
 use App\Support\Workspace;
 use Illuminate\Http\JsonResponse;
@@ -17,7 +19,7 @@ use Illuminate\View\View;
 
 class PosController extends Controller
 {
-    public function __construct(private PosService $pos)
+    public function __construct(private PosService $pos, private CustomListService $lists)
     {
     }
 
@@ -138,9 +140,9 @@ class PosController extends Controller
 
         $serviceModes = \App\Models\Sale::SERVICE_MODES;
         $posSettings = app(\App\Services\SettingService::class)->getGroup('pos', $company);
-        $deliveryPlatforms = collect($posSettings['delivery_platforms'] ?? [])
-            ->filter(fn ($p) => ! empty($p['name']) && ($p['active'] ?? true))
-            ->values();
+        $deliveryPlatforms = DeliveryPlatform::query()->forCompany($company->id)
+            ->where('is_active', true)->where('kind', 'external')->orderBy('name')
+            ->get(['id', 'name', 'commission_type', 'commission_value']);
         $categoriesPosition = in_array($posSettings['categories_position'] ?? 'bottom', ['bottom', 'left'], true)
             ? ($posSettings['categories_position'] ?? 'bottom')
             : 'bottom';
@@ -157,6 +159,82 @@ class PosController extends Controller
             'employees', 'deliveryAgents', 'serviceModes', 'deliveryPlatforms',
             'categoriesPosition', 'paymentMethods', 'instrumentMethods', 'tables'
         ));
+    }
+
+    public function offlineSnapshot(): JsonResponse
+    {
+        $this->authorize('pos.sell');
+        $company = Workspace::company();
+        $this->lists->ensureDefaults($company);
+
+        return response()->json([
+            'saved_at' => now()->toIso8601String(),
+            'limits' => [
+                'guest_login' => false,
+                'reason' => 'La session Blade reste requise. Le catalogue et la file de ventes tiennent dans IndexedDB, pas un mode invité hors ligne.',
+            ],
+            'products' => $this->pos->catalog(null, null, 500),
+            'categories' => Category::query()->where('company_id', $company->id)->orderBy('name')->get(['id', 'name']),
+            'payment_modes' => $this->lists->forType($company->id, 'mode_de_paiement'),
+            'service_modes' => $this->lists->forType($company->id, 'mode_de_service'),
+            'tickets' => $this->lists->forType($company->id, 'tickets_predefinis'),
+            'discounts' => $this->lists->forType($company->id, 'remises'),
+            'taxes' => $this->lists->forType($company->id, 'taxes'),
+        ]);
+    }
+
+    public function offlineSync(Request $request): JsonResponse
+    {
+        $this->authorize('pos.sell');
+        $sales = $request->validate([
+            'sales' => ['required', 'array', 'min:1', 'max:50'],
+            'sales.*.client_uuid' => ['required', 'uuid'],
+            'sales.*.items' => ['required', 'array', 'min:1'],
+            'sales.*.items.*.product_id' => ['required', 'integer'],
+            'sales.*.items.*.quantity' => ['required', 'numeric', 'min:0.001'],
+            'sales.*.items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
+            'sales.*.items.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'sales.*.items.*.option_variant_ids' => ['nullable', 'array'],
+            'sales.*.payments' => ['required', 'array', 'min:1'],
+            'sales.*.customer_id' => ['nullable', 'integer'],
+            'sales.*.notes' => ['nullable', 'string', 'max:500'],
+            'sales.*.service_mode_list_id' => ['nullable', 'integer'],
+            'sales.*.ticket_name' => ['nullable', 'string', 'max:255'],
+            'sales.*.delivery_platform_id' => ['nullable', 'integer'],
+        ])['sales'];
+
+        $results = [];
+        foreach ($sales as $payload) {
+            try {
+                $sale = $this->pos->completeSale(
+                    $payload['items'],
+                    $payload['payments'],
+                    $payload['customer_id'] ?? null,
+                    $payload['notes'] ?? null,
+                    null,
+                    [
+                        'client_uuid' => $payload['client_uuid'],
+                        'service_mode_list_id' => $payload['service_mode_list_id'] ?? null,
+                        'ticket_name' => $payload['ticket_name'] ?? null,
+                        'delivery_platform_id' => $payload['delivery_platform_id'] ?? null,
+                        'appointment_at' => $payload['appointment_at'] ?? null,
+                        'pickup_date' => $payload['pickup_date'] ?? null,
+                        'delivery_address' => $payload['delivery_address'] ?? null,
+                        'ticket_group' => $payload['ticket_group'] ?? null,
+                        'predefined_ticket_id' => $payload['predefined_ticket_id'] ?? null,
+                    ]
+                );
+                $results[] = ['client_uuid' => $payload['client_uuid'], 'ok' => true, 'number' => $sale->number, 'sale_id' => $sale->id];
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                $results[] = [
+                    'client_uuid' => $payload['client_uuid'],
+                    'ok' => false,
+                    'message' => collect($e->errors())->flatten()->first(),
+                ];
+            }
+        }
+
+        return response()->json(['results' => $results]);
     }
 
     public function catalog(Request $request): JsonResponse
@@ -182,22 +260,41 @@ class PosController extends Controller
             'items.*.quantity' => ['required', 'numeric', 'min:0.001'],
             'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'items.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.option_variant_ids' => ['nullable', 'array'],
+            'items.*.option_variant_ids.*' => ['integer'],
             'payments' => ['required', 'array', 'min:1'],
             'payments.*.method' => ['required', 'in:'.implode(',', array_keys(PosPayment::METHODS))],
             'payments.*.reference' => ['nullable', 'string', 'max:120'],
             'payments.*.due_date' => ['nullable', 'date'],
+            'payments.*.custom_list_id' => ['nullable', 'integer'],
+            'payments.*.transaction_number' => ['nullable', 'string', 'max:120'],
+            'payments.*.bank_name' => ['nullable', 'string', 'max:120'],
+            'payments.*.issue_date' => ['nullable', 'date'],
             'payments.*.amount' => ['required', 'numeric', 'min:0.01'],
             'payments.*.tendered' => ['nullable', 'numeric', 'min:0'],
+            'payments.*.transaction_number' => ['nullable', 'string', 'max:120'],
+            'payments.*.piece_number' => ['nullable', 'string', 'max:120'],
+            'payments.*.bank_name' => ['nullable', 'string', 'max:120'],
+            'payments.*.transfer_mode' => ['nullable', 'string', 'max:64'],
+            'payments.*.issue_date' => ['nullable', 'date'],
+            'payments.*.due_date' => ['nullable', 'date'],
             'customer_id' => ['nullable', 'exists:customers,id'],
             'notes' => ['nullable', 'string', 'max:500'],
             'held_sale_id' => ['nullable', 'exists:pos_sales,id'],
             'service_mode' => ['nullable', 'in:dine_in,takeaway,delivery'],
             'employee_id' => ['nullable', 'exists:employees,id'],
             'delivery_agent_id' => ['nullable', 'exists:delivery_agents,id'],
-            'delivery_platform' => ['nullable', 'string', 'max:120'],
             'ticket_discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'ticket_name' => ['nullable', 'string', 'max:120'],
             'pos_table_id' => ['nullable', 'integer'],
+            'service_mode_list_id' => ['nullable', 'integer'],
+            'predefined_ticket_id' => ['nullable', 'integer'],
+            'ticket_group' => ['nullable', 'string', 'max:255'],
+            'delivery_platform_id' => ['nullable', 'integer'],
+            'appointment_at' => ['nullable', 'date'],
+            'pickup_date' => ['nullable', 'date'],
+            'delivery_address' => ['nullable', 'string', 'max:500'],
+            'client_uuid' => ['nullable', 'uuid'],
         ]);
 
         try {
@@ -211,10 +308,17 @@ class PosController extends Controller
                     'service_mode' => $data['service_mode'] ?? null,
                     'employee_id' => $data['employee_id'] ?? null,
                     'delivery_agent_id' => $data['delivery_agent_id'] ?? null,
-                    'delivery_platform' => $data['delivery_platform'] ?? null,
                     'ticket_discount_percent' => $data['ticket_discount_percent'] ?? 0,
                     'ticket_name' => $data['ticket_name'] ?? null,
                     'pos_table_id' => $data['pos_table_id'] ?? null,
+                    'service_mode_list_id' => $data['service_mode_list_id'] ?? null,
+                    'predefined_ticket_id' => $data['predefined_ticket_id'] ?? null,
+                    'ticket_group' => $data['ticket_group'] ?? null,
+                    'delivery_platform_id' => $data['delivery_platform_id'] ?? null,
+                    'appointment_at' => $data['appointment_at'] ?? null,
+                    'pickup_date' => $data['pickup_date'] ?? null,
+                    'delivery_address' => $data['delivery_address'] ?? null,
+                    'client_uuid' => $data['client_uuid'] ?? null,
                 ]
             );
 
@@ -262,6 +366,8 @@ class PosController extends Controller
             'items.*.quantity' => ['required', 'numeric', 'min:0.001'],
             'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'items.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.option_variant_ids' => ['nullable', 'array'],
+            'items.*.option_variant_ids.*' => ['integer'],
             'customer_id' => ['nullable', 'exists:customers,id'],
             'notes' => ['nullable', 'string', 'max:500'],
             'ticket_name' => ['nullable', 'string', 'max:120'],

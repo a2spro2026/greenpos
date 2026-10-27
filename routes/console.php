@@ -20,3 +20,5 @@ Artisan::command('reminders:send', function () {
 })->purpose('Send due messaging reminders');
 
 Schedule::command('reminders:send')->everyFiveMinutes();
+
+Schedule::command('tasks:run-automation')->hourly();
