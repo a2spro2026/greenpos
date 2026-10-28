@@ -25,8 +25,8 @@
             @endforeach
         </select>
         <div class="flex min-w-0 gap-2">
-            <input type="date" name="from" value="{{ $filters['from'] ?? '' }}" class="gp-input w-0 min-w-0 flex-1" aria-label="Depuis le">
-            <button type="submit" class="gp-btn-secondary shrink-0">Filtrer</button>
+            <input type="date" name="from" value="{{ $filters['from'] ?? '' }}" class="gp-input min-w-0 flex-1" aria-label="Depuis le">
+            <button type="submit" class="gp-btn-secondary shrink-0 !w-auto">Filtrer</button>
         </div>
     </form>
 
