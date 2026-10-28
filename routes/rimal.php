@@ -33,3 +33,17 @@ Route::get('/abonnement', [\App\Http\Controllers\SubscriptionInfoController::cla
 Route::get('/products/categories', [\App\Http\Controllers\CategoryController::class, 'index'])->name('products.categories.index');
 Route::post('/products/categories', [\App\Http\Controllers\CategoryController::class, 'store'])->name('products.categories.store');
 Route::put('/products/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'update'])->name('products.categories.update');
+
+Route::post('/pos/tickets/{sale}/archive', [\App\Http\Controllers\PosTicketController::class, 'archive'])->whereNumber('sale')->name('pos.tickets.archive');
+
+// Rimal V2 — retours fournisseur
+Route::middleware(['auth'])->group(function () {
+    Route::get('/purchases/returns', [\App\Http\Controllers\SupplierReturnController::class, 'index'])->name('purchases.returns.index');
+    Route::get('/purchases/returns/create', [\App\Http\Controllers\SupplierReturnController::class, 'create'])->name('purchases.returns.create');
+    Route::post('/purchases/returns', [\App\Http\Controllers\SupplierReturnController::class, 'store'])->name('purchases.returns.store');
+    Route::get('/purchases/returns/{return}', [\App\Http\Controllers\SupplierReturnController::class, 'show'])->whereNumber('return')->name('purchases.returns.show');
+    Route::get('/purchases/returns/{return}/print', [\App\Http\Controllers\SupplierReturnController::class, 'print'])->whereNumber('return')->name('purchases.returns.print');
+    Route::post('/purchases/returns/{return}/validate', [\App\Http\Controllers\SupplierReturnController::class, 'validateReturn'])->whereNumber('return')->name('purchases.returns.validate');
+    Route::post('/purchases/returns/{return}/credit', [\App\Http\Controllers\SupplierReturnController::class, 'credit'])->whereNumber('return')->name('purchases.returns.credit');
+    Route::post('/purchases/returns/{return}/cancel', [\App\Http\Controllers\SupplierReturnController::class, 'cancel'])->whereNumber('return')->name('purchases.returns.cancel');
+});

@@ -74,6 +74,7 @@ class PosSale extends Model
     protected function casts(): array
     {
         return [
+            'archived_at' => 'datetime',
             'subtotal_ht' => 'decimal:2',
             'tax_total' => 'decimal:2',
             'discount_total' => 'decimal:2',

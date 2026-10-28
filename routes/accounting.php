@@ -7,7 +7,7 @@ use App\Http\Controllers\Accounting\LedgerController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['web', 'auth', 'workspace', 'session.active', 'audit'])->prefix('accounting')->name('accounting.')->group(function () {
-    Route::redirect('/', '/accounting/expenses')->name('home');
+    Route::get('/', [\App\Http\Controllers\Accounting\AccountingHomeController::class, 'index'])->name('home');
 
     Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
     Route::get('/expenses/create', [ExpenseController::class, 'create'])->name('expenses.create');

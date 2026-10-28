@@ -269,9 +269,10 @@
                     </button>
                 </li>
             @empty
-                <li class="py-8 text-center text-sm text-slate-500">Aucun ticket enregistré.</li>
+                <li class="py-8 text-center text-sm text-slate-400">Aucun ticket enregistré.</li>
             @endforelse
         </ul>
+        <a href="{{ route('pos.tickets.index', ['status' => 'archived']) }}" class="mt-3 block text-center text-xs text-slate-400 hover:text-white">Les tickets anciens sont archivés automatiquement — voir les archivés</a>
     </div>
 </div>
 

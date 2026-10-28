@@ -35,7 +35,9 @@ class PosTicketController extends Controller
                         ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', $term));
                 });
             })
-            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
+            ->when($request->input('status') === 'archived', fn ($q) => $q->where('status', 'held')->whereNotNull('archived_at'))
+            ->when($request->input('status') === 'held', fn ($q) => $q->where('status', 'held')->whereNull('archived_at'))
+            ->when($request->filled('status') && ! in_array($request->input('status'), ['held', 'archived'], true), fn ($q) => $q->where('status', $request->string('status')))
             ->when($request->filled('from'), fn ($q) => $q->whereDate('completed_at', '>=', $request->date('from')))
             ->latest('id')
             ->paginate(20)
@@ -43,7 +45,7 @@ class PosTicketController extends Controller
 
         return view('pos.tickets.index', [
             'tickets' => $tickets,
-            'statuses' => PosSale::STATUSES,
+            'statuses' => PosSale::STATUSES + ['archived' => 'En attente archivés'],
             'filters' => $request->only(['q', 'status', 'from']),
         ]);
     }
@@ -164,6 +166,17 @@ class PosTicketController extends Controller
         $sale->load(['lines', 'store']);
 
         return view('pos.tickets.kitchen', compact('sale'));
+    }
+
+    public function archive(PosSale $sale): RedirectResponse
+    {
+        $this->authorize('pos.hold');
+        if ($sale->company_id !== Workspace::company()?->id || $sale->status !== 'held') {
+            abort(404);
+        }
+        $sale->forceFill(['archived_at' => $sale->archived_at ? null : now()])->save();
+
+        return back()->with('success', $sale->archived_at ? 'Ticket archivé (masqué de « Reprendre », rien n’est supprimé).' : 'Ticket désarchivé : il réapparaît dans « Reprendre ».');
     }
 
     public function cancel(PosSale $sale): RedirectResponse

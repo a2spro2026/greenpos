@@ -773,6 +773,7 @@
             if (s) { s.hidden = false; s.classList.add('open'); }
         });
     </script>
+    @include('partials.chart-empty-states')
     @include('ai.widget')
     @include('partials.logout-modal')
     <script>

@@ -72,7 +72,7 @@ class SidebarStructure
                     self::item('Bons de commande', 'purchases.orders.index', 'purchases', 'purchases.view', 'purchases', 'purchases.orders.*'),
                     self::item('Réception de marchandises', 'purchases.receipts.index', 'purchases', 'purchases.view', 'purchases', 'purchases.receipts.*'),
                     self::item('Historique achats & factures fournisseurs', 'purchases.history', 'purchases', 'purchases.view', 'purchases', 'purchases.history'),
-                    self::item('Retour fournisseur', 'purchases.orders.index', 'purchases', 'purchases.view', 'purchases', 'purchases.orders.*', query: ['status' => 'return']),
+                    self::item('Retour fournisseur', 'purchases.returns.index', 'purchases', 'purchases.view', 'purchases', 'purchases.returns.*'),
                     self::item('Fournisseurs', 'suppliers.dashboard', 'suppliers', 'suppliers.view', 'suppliers', 'suppliers.*'),
                 ],
             ],
@@ -95,7 +95,7 @@ class SidebarStructure
                     self::item('Créances (chèques, effets, crédits)', 'pos.collections', 'pos', 'pos.view', 'invoices', 'pos.collections'),
                     self::item('Commissions', 'hr.payroll.index', 'hr', 'hr.view', 'payments', 'hr.payroll.*'),
                     self::item('Trésorerie (caisse & banque)', 'accounting.cash.index', 'accounting', 'accounting.view', 'accounting', 'accounting.cash.*'),
-                    self::item('Comptabilité (grand livre)', 'accounting.ledger.index', 'accounting', 'accounting.view', 'accounting', 'accounting.*'),
+                    self::item('Comptabilité', 'accounting.home', 'accounting', 'accounting.view', 'accounting', 'accounting.home'),
                 ],
             ],
             [

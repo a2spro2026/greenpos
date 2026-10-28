@@ -59,6 +59,7 @@ class SettingsDefaults
                 'scanner_enabled' => true,
                 'default_cash_drawer' => '',
                 'allow_held_tickets' => true,
+                'held_archive_days' => 30,
                 'require_customer' => false,
                 'show_stock_warning' => true,
                 'receipt_footer' => 'Merci de votre visite',

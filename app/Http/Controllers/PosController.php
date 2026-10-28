@@ -118,9 +118,11 @@ class PosController extends Controller
             : Product::query()->forCompany($company->id)->where('status', 'active')->whereIn('id', $ids)->get(['id', 'name', 'sale_price', 'sku', 'tax_rate'])
                 ->sortBy(fn ($p) => $ids->search($p->id))->values();
 
+        app(\App\Services\HeldTicketArchiver::class)->archiveStale($company);
         $held = PosSale::query()
             ->forCompany($company->id)
             ->where('status', 'held')
+            ->whereNull('archived_at')
             ->where('total_ttc', '>', 0)
             ->where('store_id', Workspace::store()?->id)
             ->latest('held_at')
@@ -404,6 +406,9 @@ class PosController extends Controller
         $this->authorize('pos.hold');
         if ($sale->company_id !== Workspace::company()?->id || $sale->status !== 'held') {
             abort(404);
+        }
+        if ($sale->archived_at) {
+            abort(409, 'Ticket archivé : désarchivez-le depuis Tickets POS pour le reprendre.');
         }
 
         return response()->json([

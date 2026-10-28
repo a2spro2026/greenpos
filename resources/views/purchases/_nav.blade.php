@@ -3,6 +3,7 @@
         ['route' => 'purchases.dashboard', 'label' => 'Tableau de bord', 'match' => 'purchases.dashboard'],
         ['route' => 'purchases.orders.index', 'label' => 'Commandes', 'match' => 'purchases.orders.*'],
         ['route' => 'purchases.receipts.index', 'label' => 'Réceptions', 'match' => 'purchases.receipts.*'],
+        ['route' => 'purchases.returns.index', 'label' => 'Retours fournisseur', 'match' => 'purchases.returns.*'],
         ['route' => 'purchases.requests.index', 'label' => 'Demandes', 'match' => 'purchases.requests.*'],
         ['route' => 'purchases.history', 'label' => 'Historique', 'match' => 'purchases.history'],
         ['route' => 'purchases.stats', 'label' => 'Statistiques', 'match' => 'purchases.stats'],

@@ -54,8 +54,13 @@
                             <td>{{ $sale->cashier?->name ?? '—' }}</td>
                             <td class="text-sm">{{ $sale->payments->map->methodLabel()->unique()->implode(', ') ?: '—' }}</td>
                             <td class="text-right font-bold">{{ number_format($sale->total_ttc, 2, ',', ' ') }}</td>
-                            <td><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $sale->statusColor() }}">{{ $sale->statusLabel() }}</span></td>
-                            <td class="text-right">
+                            <td><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $sale->archived_at ? 'bg-slate-200 text-slate-700' : $sale->statusColor() }}">{{ $sale->archived_at ? 'Archivé' : $sale->statusLabel() }}</span></td>
+                            <td class="whitespace-nowrap text-right">
+                                @if($sale->status === 'held')
+                                    @can('pos.hold')
+                                        <form method="post" action="{{ route('pos.tickets.archive', $sale) }}" class="mr-2 inline">@csrf<button class="text-sm font-semibold text-gp-muted hover:text-gp-text hover:underline">{{ $sale->archived_at ? 'Désarchiver' : 'Archiver' }}</button></form>
+                                    @endcan
+                                @endif
                                 <a href="{{ route('pos.tickets.show', $sale) }}" class="text-sm font-semibold text-gp-primary hover:underline">Voir</a>
                             </td>
                         </tr>

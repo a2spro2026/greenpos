@@ -20,6 +20,7 @@ class PosKdsController extends Controller
             ->forCompany($company->id)
             ->when($storeId, fn ($q) => $q->where('store_id', $storeId))
             ->whereIn('status', ['held', 'completed'])
+            ->whereNull('archived_at')
             ->whereIn('service_mode', ['dine_in', 'takeaway', 'delivery'])
             ->where('created_at', '>=', now()->subHours(12))
             ->with('lines')

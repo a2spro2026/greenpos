@@ -1,5 +1,6 @@
 @php
 $items = [
+  ['route'=>'accounting.home','label'=>'Accueil','match'=>'accounting.home'],
   ['route'=>'accounting.expenses.index','label'=>'Charges','match'=>'accounting.expenses.*'],
   ['route'=>'accounting.cash.index','label'=>'Caisse','match'=>'accounting.cash.*'],
   ['route'=>'accounting.accounts.index','label'=>'Comptes','match'=>'accounting.accounts.*'],

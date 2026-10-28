@@ -1,7 +1,7 @@
 @extends('layouts.site')
 
 @section('title', 'Contact')
-@section('meta_description', 'Contactez l’équipe GreenPOS pour une démonstration, un accompagnement ou une question commerciale.')
+@section('meta_description', 'Contactez notre équipe pour une démonstration, un accompagnement ou une question commerciale.')
 
 @section('content')
 <section class="site-page-hero">

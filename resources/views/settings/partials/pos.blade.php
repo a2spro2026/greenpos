@@ -41,6 +41,11 @@
             <label class="gp-label">Copies ticket</label>
             <input type="number" name="print_copies" value="{{ $settings['print_copies'] }}" class="gp-input" min="0" max="5">
         </div>
+        <div>
+            <label class="gp-label">Archiver les tickets en attente après (jours)</label>
+            <input type="number" name="held_archive_days" value="{{ $settings['held_archive_days'] ?? 30 }}" class="gp-input" min="0" max="365">
+            <p class="mt-1 text-xs text-gp-muted">Les tickets enregistrés plus anciens sont masqués de « Reprendre » (jamais supprimés, visibles via le filtre « Archivés » des tickets). 0 = désactivé.</p>
+        </div>
         <div class="flex flex-col justify-end gap-3 pb-1">
             <label class="inline-flex items-center gap-2 text-sm">
                 <input type="checkbox" name="print_ticket" value="1" class="rounded border-gp-border" @checked($settings['print_ticket'])>

@@ -243,6 +243,7 @@ class SettingController extends Controller
                 'scanner_enabled' => $request->boolean('scanner_enabled'),
                 'default_cash_drawer' => $request->string('default_cash_drawer')->toString(),
                 'allow_held_tickets' => $request->boolean('allow_held_tickets'),
+                'held_archive_days' => max(0, min(365, (int) $request->input('held_archive_days', 30))),
                 'require_customer' => $request->boolean('require_customer'),
                 'show_stock_warning' => $request->boolean('show_stock_warning'),
                 'receipt_footer' => $request->string('receipt_footer')->toString(),
