@@ -7,6 +7,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function () {
@@ -21,9 +22,19 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Support\Facades\Route::middleware('web')
                 ->group(base_path('routes/crm.php'));
             \Illuminate\Support\Facades\Route::middleware('web')
+                ->group(base_path('routes/hr.php'));
+            \Illuminate\Support\Facades\Route::middleware('web')
                 ->group(base_path('routes/onboarding.php'));
             \Illuminate\Support\Facades\Route::middleware('web')
                 ->group(base_path('routes/registration.php'));
+            \Illuminate\Support\Facades\Route::middleware('web')
+                ->group(base_path('routes/accounting.php'));
+            \Illuminate\Support\Facades\Route::middleware('web')
+                ->group(base_path('routes/ops.php'));
+            \Illuminate\Support\Facades\Route::middleware('web')
+                ->group(base_path('routes/messaging.php'));
+            \Illuminate\Support\Facades\Route::middleware('web')
+                ->group(base_path('routes/shop.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -33,10 +44,25 @@ return Application::configure(basePath: dirname(__DIR__))
             'superadmin' => \App\Http\Middleware\EnsureSuperAdmin::class,
             'platform.admin' => \App\Http\Middleware\EnsurePlatformAdmin::class,
             'session.active' => \App\Http\Middleware\EnsureSessionActive::class,
+            'api.token' => \App\Http\Middleware\AuthenticateApiToken::class,
         ]);
 
-        $middleware->redirectGuestsTo(fn () => route('login'));
-        $middleware->redirectUsersTo(fn () => route('home'));
+        $middleware->redirectGuestsTo(function () {
+            $request = request();
+            if ($request->is('admin', 'admin/*', 'superadmin', 'superadmin/*')) {
+                return route('admin.login');
+            }
+
+            return route('login');
+        });
+        $middleware->redirectUsersTo(function () {
+            $user = auth()->user();
+            if ($user?->is_platform_admin && ! session('admin_impersonator_id')) {
+                return route('admin.dashboard');
+            }
+
+            return route('home');
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, $request) {
@@ -78,7 +104,11 @@ return Application::configure(basePath: dirname(__DIR__))
                     ], 419);
                 }
 
-                return redirect()->route('login')
+                $loginRoute = $request->is('admin', 'admin/*', 'superadmin', 'superadmin/*')
+                    ? 'admin.login'
+                    : 'login';
+
+                return redirect()->route($loginRoute)
                     ->with('session_expired', true)
                     ->with('status', 'Votre session a expiré. Veuillez vous reconnecter.');
             }

@@ -64,15 +64,14 @@ class PosSessionController extends Controller
             abort(403, 'Caisse déjà clôturée.');
         }
 
-        $cashSales = (float) $session->sales()
-            ->where('status', 'completed')
-            ->with('payments')
-            ->get()
-            ->sum(fn ($sale) => $sale->payments->where('method', 'cash')->sum('amount'));
+        $cash = app(\App\Services\PosCashService::class);
+        $cashSales = $cash->cashSales($session);
+        $expected = $cash->expectedCash($session);
+        $cashIn = (float) \App\Models\PosCashMovement::query()->where('pos_session_id', $session->id)->where('direction', 'in')->sum('amount');
+        $cashOut = (float) \App\Models\PosCashMovement::query()->where('pos_session_id', $session->id)->where('direction', 'out')->sum('amount');
+        $denominations = \App\Services\PosCashService::denominationsFor(Workspace::company()?->currency);
 
-        $expected = (float) $session->opening_float + $cashSales;
-
-        return view('pos.sessions.close', compact('session', 'expected', 'cashSales'));
+        return view('pos.sessions.close', compact('session', 'expected', 'cashSales', 'cashIn', 'cashOut', 'denominations'));
     }
 
     public function close(Request $request, PosSession $session): RedirectResponse
@@ -83,9 +82,12 @@ class PosSessionController extends Controller
         $data = $request->validate([
             'closing_counted' => ['required', 'numeric', 'min:0'],
             'closing_notes' => ['nullable', 'string', 'max:500'],
+            'breakdown' => ['nullable', 'array'],
+            'breakdown.*' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        $this->pos->closeSession($session, (float) $data['closing_counted'], $data['closing_notes'] ?? null);
+        $breakdown = collect($data['breakdown'] ?? [])->filter(fn ($q) => (int) $q > 0)->all();
+        $this->pos->closeSession($session, (float) $data['closing_counted'], $data['closing_notes'] ?? null, $breakdown ?: null);
 
         return redirect()->route('pos.sessions.index')->with('success', 'Caisse clôturée.');
     }

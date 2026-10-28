@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Entreprise suspendue — GreenPOS</title>
+    <title>Entreprise suspendue — {{ config('app.name') }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css'])
     <style>
@@ -30,7 +30,7 @@
 <body>
 <div class="box">
     <h1>Votre entreprise est actuellement suspendue.</h1>
-    <p>Veuillez contacter GreenPOS.</p>
+    <p>Veuillez contacter {{ config('app.name') }}.</p>
     @if(!empty($companyName))
         <p><strong>{{ $companyName }}</strong></p>
     @endif

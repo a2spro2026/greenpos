@@ -3,7 +3,7 @@
     @if(!empty($onboardingChecklist['show_welcome']) || session('welcome_onboarding'))
         <div class="flex flex-wrap items-start justify-between gap-3 border-b border-gp-border/60 px-5 py-4">
             <div>
-                <p class="text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300">Bienvenue sur GreenPOS</p>
+                <p class="text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300">Bienvenue sur {{ config('app.name') }}</p>
                 <p class="mt-1 text-sm text-gp-text">Votre espace est prêt. Suivez la checklist pour encaisser votre première vente.</p>
             </div>
             <form method="POST" action="{{ route('onboarding.welcome.dismiss') }}">@csrf<button class="gp-btn-ghost text-xs">Masquer</button></form>
@@ -35,7 +35,7 @@
 <section class="mb-6 rounded-2xl border border-teal-500/20 bg-teal-500/10 px-5 py-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-            <p class="text-sm font-bold text-teal-800 dark:text-teal-200">Bienvenue sur GreenPOS 🎉</p>
+            <p class="text-sm font-bold text-teal-800 dark:text-teal-200">Bienvenue sur {{ config('app.name') }} 🎉</p>
             <p class="text-sm text-gp-muted">Votre entreprise est opérationnelle. Explorez le tableau de bord.</p>
         </div>
         <form method="POST" action="{{ route('onboarding.welcome.dismiss') }}">@csrf<button class="gp-btn-secondary text-xs">Compris</button></form>

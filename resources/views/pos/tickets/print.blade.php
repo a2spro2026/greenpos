@@ -40,13 +40,16 @@
         <p class="muted" style="font-weight:700;letter-spacing:.08em">{{ $header }}</p>
     @endif
     @if(! $isKitchen && ! empty($ticket['show_logo']))
-        <h1>{{ $sale->store?->name ?? $sale->company?->name ?? 'GreenPOS' }}</h1>
+        <h1>{{ $sale->store?->name ?? $sale->company?->name ?? config('app.name') }}</h1>
     @else
-        <h1>{{ $isKitchen ? ($header ?: 'CUISINE') : ($sale->store?->name ?? 'GreenPOS') }}</h1>
+        <h1>{{ $isKitchen ? ($header ?: 'CUISINE') : ($sale->store?->name ?? config('app.name')) }}</h1>
     @endif
     <p class="muted">{{ $sale->number }} · {{ optional($sale->completed_at)->format('d/m/Y H:i') }}</p>
     @if($sale->ticket_name)
-        <p class="muted">{{ $sale->ticket_name }}@if($sale->service_mode) · {{ $sale->service_mode }}@endif</p>
+        <p class="muted">{{ $sale->ticket_name }}@if($sale->service_mode) · {{ \App\Models\Sale::SERVICE_MODES[$sale->service_mode] ?? $sale->service_mode }}@endif</p>
+    @endif
+    @if($sale->delivery_platform)
+        <p class="muted">Livraison {{ $sale->delivery_platform }}</p>
     @endif
     @if(! $isKitchen && ! empty($ticket['show_ice']) && $sale->company?->ice)
         <p class="muted">ICE {{ $sale->company->ice }}</p>
@@ -97,7 +100,7 @@
     @if($showPrices)
         <div class="pay">
             @foreach($sale->payments as $pay)
-                <div>{{ $pay->methodLabel() }} : {{ number_format($pay->amount, 2, ',', ' ') }}@if($pay->is_deferred) (différé)@endif</div>
+                <div>{{ $pay->methodLabel() }} : {{ number_format($pay->amount, 2, ',', ' ') }}@if($pay->reference) · N° {{ $pay->reference }}@endif @if($pay->due_date) · Éch. {{ $pay->due_date->format('d/m/Y') }}@endif @if($pay->is_deferred) (différé)@endif</div>
                 @if($pay->method === 'cash' && $pay->change_amount > 0)
                     <div>Rendu : {{ number_format($pay->change_amount, 2, ',', ' ') }}</div>
                 @endif

@@ -3,7 +3,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Terminal POS — GreenPOS</title>
+    <title>Terminal POS — {{ config('app.name') }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -40,8 +40,24 @@
             transition: background-color .25s ease, border-color .25s ease;
         }
         html.dark .pos-chrome { background: #111827; border-color: rgba(255,255,255,.1); }
+        /* Panneaux toujours sombres (panier, paiement) : texte clair quel que soit le thème */
+        .pos-dark { color: #e5e7eb; }
+        .pos-dark h3, .pos-dark .pos-strong { color: #fff; }
+        .pos-dark .text-slate-500 { color: #94a3b8; }
+        .pos-dark .text-slate-400 { color: #cbd5e1; }
+        .pos-dark input, .pos-dark select, .pos-dark textarea { color: #f8fafc; background-color: rgba(255,255,255,.06); border-color: rgba(255,255,255,.18); }
+        .pos-dark input::placeholder, .pos-dark textarea::placeholder { color: #94a3b8; opacity: 1; }
+        .pos-dark select option { color: #0f172a; background: #fff; }
+        .pos-dark input[type=date] { color-scheme: dark; }
+        .pos-dark .pay-method:not(.bg-emerald-500), .pos-dark [data-quick]:not([data-quick=exact]), .pos-dark [data-close-pay] { color: #f1f5f9; background-color: rgba(255,255,255,.08); }
+        .pos-dark .pay-method:not(.bg-emerald-500):hover, .pos-dark [data-quick]:not([data-quick=exact]):hover { background-color: rgba(255,255,255,.16); }
     </style>
 </head>
+@php
+    $catLeft = ($categoriesPosition ?? 'bottom') === 'left';
+    // Modes historiques conservés pour l'affichage des anciennes ventes, masqués à l'encaissement.
+    $gridMethods = array_diff_key($paymentMethods, array_flip(['bank_transfer', 'check']));
+@endphp
 <body class="pos-shell antialiased" style="font-family:'Plus Jakarta Sans',system-ui,sans-serif">
 @php
     $canHold = auth()->user()?->can('pos.hold');
@@ -72,7 +88,6 @@
                     @else
                         Aucune caisse ouverte
                     @endif
-                    <span id="pos-offline-pill" class="ml-1 hidden rounded-full bg-amber-500/20 px-2 py-0.5 font-bold text-amber-300">Hors ligne</span>
                 </p>
             </div>
             @if(!$session)
@@ -80,6 +95,9 @@
             @else
                 <a href="{{ route('pos.sessions.close.form', $session) }}" class="rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200 dark:bg-white/5 dark:text-white dark:ring-white/10 dark:hover:bg-white/10">Clôturer</a>
             @endif
+            <a href="{{ route('pos.sync-conflicts.index') }}" id="pos-net-status" title="État réseau / tickets hors ligne en attente" class="inline-flex h-10 items-center gap-1 rounded-xl bg-emerald-50 px-3 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20">
+                <span id="pos-net-dot" class="h-2 w-2 rounded-full bg-emerald-500"></span><span id="pos-net-label">En ligne</span>
+            </a>
             <button type="button" id="gp-theme-toggle" data-theme-toggle class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200 dark:bg-white/5 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-white/10" aria-label="Changer le thème" title="Thème clair / sombre">
                 <svg data-theme-icon="light" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                 <svg data-theme-icon="dark" class="hidden h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
@@ -94,26 +112,20 @@
                        class="h-14 w-full rounded-2xl border-0 bg-white pl-12 pr-4 text-base font-medium text-slate-900 outline-none ring-1 ring-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500/60 dark:bg-white/5 dark:text-white dark:ring-white/10 dark:placeholder:text-slate-500">
                 <svg class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"/></svg>
             </div>
-            <div class="flex gap-2 overflow-x-auto pb-1" id="pos-categories">
-                <button type="button" data-cat="" class="pos-cat shrink-0 rounded-full bg-emerald-500 px-4 py-2 text-sm font-bold text-slate-950">Tous</button>
-                @foreach($categories as $cat)
-                    <button type="button" data-cat="{{ $cat->id }}" class="pos-cat shrink-0 rounded-full bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-white/10">{{ $cat->name }}</button>
-                @endforeach
-            </div>
             @if($favorites->isNotEmpty())
                 <div>
                     <p class="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">Favoris / récents</p>
                     <div class="flex gap-2 overflow-x-auto pb-1">
                         @foreach($favorites as $fav)
                             <button type="button"
-                                    class="pos-fav shrink-0 rounded-xl bg-emerald-500/15 px-3 py-2 text-left text-sm font-semibold text-emerald-200 ring-1 ring-emerald-500/30 hover:bg-emerald-500/25"
+                                    class="pos-fav shrink-0 rounded-xl bg-emerald-500/15 px-3 py-2 text-left text-sm font-semibold text-emerald-900 ring-1 ring-emerald-500/40 hover:bg-emerald-500/25 dark:text-emerald-100"
                                     data-id="{{ $fav->id }}"
                                     data-name="{{ $fav->name }}"
                                     data-price="{{ $fav->sale_price }}"
                                     data-tax="{{ $fav->tax_rate }}"
                                     data-sku="{{ $fav->sku }}">
                                 {{ \Illuminate\Support\Str::limit($fav->name, 22) }}
-                                <span class="mt-0.5 block text-xs font-medium text-emerald-300/80">{{ number_format($fav->sale_price, 2, ',', ' ') }}</span>
+                                <span class="mt-0.5 block text-xs font-medium text-emerald-700 dark:text-emerald-300">{{ number_format($fav->sale_price, 2, ',', ' ') }}</span>
                             </button>
                         @endforeach
                     </div>
@@ -121,14 +133,26 @@
             @endif
         </div>
 
-        <div id="pos-products" class="flex-1 overflow-y-auto p-4">
-            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5" id="pos-product-grid"></div>
-            <p id="pos-empty" class="hidden py-16 text-center text-sm text-slate-500">Aucun produit trouvé.</p>
+        <div class="flex min-h-0 flex-1 {{ $catLeft ? 'flex-row' : 'flex-col' }}">
+            @if($catLeft)
+                <nav id="pos-categories" class="flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r border-slate-200 p-3 dark:border-white/10" data-position="left">
+                    @include('pos.partials.categories', ['categories' => $categories])
+                </nav>
+            @endif
+            <div id="pos-products" class="min-h-0 flex-1 overflow-y-auto p-4">
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5" id="pos-product-grid"></div>
+                <p id="pos-empty" class="hidden py-16 text-center text-sm text-slate-500">Aucun produit trouvé.</p>
+            </div>
+            @unless($catLeft)
+                <nav id="pos-categories" class="flex shrink-0 gap-2 overflow-x-auto border-t border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-[#0b1220]" data-position="bottom">
+                    @include('pos.partials.categories', ['categories' => $categories])
+                </nav>
+            @endunless
         </div>
     </section>
 
     {{-- RIGHT: cart --}}
-    <aside class="flex min-h-[50dvh] flex-col bg-[#111827] lg:min-h-0">
+    <aside class="pos-dark flex min-h-[50dvh] flex-col bg-[#111827] lg:min-h-0">
         <div class="border-b border-white/10 px-4 py-3">
             <div class="flex items-center justify-between gap-2">
                 <h2 class="text-sm font-bold">Panier</h2>
@@ -139,6 +163,63 @@
                     @endforeach
                 </select>
             </div>
+            <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <label class="block">
+                    <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Service</span>
+                    <select id="pos-service-mode" class="h-9 w-full rounded-xl border-0 bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
+                        <option value="">—</option>
+                        @foreach(($serviceModes ?? []) as $key => $label)
+                            <option value="{{ $key }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Employé</span>
+                    <select id="pos-employee" class="h-9 w-full rounded-xl border-0 bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
+                        <option value="">—</option>
+                        @foreach(($employees ?? []) as $emp)
+                            <option value="{{ $emp->id }}">{{ $emp->first_name }} {{ $emp->last_name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="block" id="pos-delivery-agent-wrap">
+                    <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Livreur interne</span>
+                    <select id="pos-delivery-agent" class="h-9 w-full rounded-xl border-0 bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
+                        <option value="">—</option>
+                        @foreach(($deliveryAgents ?? []) as $agent)
+                            <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            </div>
+            <div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <label class="block">
+                    <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Plateforme</span>
+                    <select id="pos-delivery-platform" class="h-9 w-full rounded-xl border-0 bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10" title="Livraison par plateforme">
+                        <option value="">— (livraison interne)</option>
+                        @foreach(($deliveryPlatforms ?? []) as $platform)
+                            <option value="{{ $platform->id }}">{{ $platform->name }} ({{ $platform->commission_type === 'fixed' ? number_format((float) $platform->commission_value, 2, ',', ' ') : rtrim(rtrim(number_format((float) $platform->commission_value, 2, '.', ''), '0'), '.').'%' }})</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Table</span>
+                    <select id="pos-table" class="h-9 w-full rounded-xl border-0 bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
+                        <option value="">—</option>
+                        @foreach(($tables ?? []) as $t)
+                            <option value="{{ $t->id }}">{{ $t->group_name ? $t->group_name.' · ' : '' }}{{ $t->name }}{{ $t->status === 'occupied' ? ' (occupée)' : '' }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Nom du ticket</span>
+                    <input id="pos-ticket-name" type="text" maxlength="120" placeholder="Ex. Karim, Table 4…" class="h-9 w-full rounded-xl bg-white/5 px-2 text-xs font-semibold ring-1 ring-white/10 placeholder:text-slate-500">
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Remise ticket %</span>
+                    <input id="pos-ticket-discount" type="number" min="0" max="100" step="0.5" value="0" class="h-9 w-full rounded-xl bg-white/5 px-2 text-xs font-bold ring-1 ring-white/10">
+                </label>
+            </div>
         </div>
 
         <div id="pos-cart-lines" class="flex-1 space-y-2 overflow-y-auto p-3">
@@ -146,46 +227,6 @@
         </div>
 
         <div class="space-y-2 border-t border-white/10 px-4 py-3 text-sm">
-            <div class="grid grid-cols-2 gap-2">
-                <label class="block">
-                    <span class="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">Ticket</span>
-                    <select id="pos-ticket" class="h-10 w-full rounded-xl bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
-                        <option value="">Libre</option>
-                        @foreach($tickets as $ticket)
-                            <option value="{{ $ticket->id }}" data-name="{{ $ticket->name }}" data-group="{{ $ticket->meta('group') }}">{{ $ticket->name }}</option>
-                        @endforeach
-                    </select>
-                </label>
-                <label class="block">
-                    <span class="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">Service</span>
-                    <select id="pos-service" class="h-10 w-full rounded-xl bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
-                        @foreach($serviceModes as $mode)
-                            <option value="{{ $mode->id }}" data-agent="{{ $mode->meta('requires_delivery_agent') ? '1' : '0' }}" data-platform="{{ $mode->meta('platform_id') }}" @selected($mode->is_default)>{{ $mode->name }}</option>
-                        @endforeach
-                    </select>
-                </label>
-            </div>
-            <div id="pos-delivery" class="hidden space-y-2">
-                <select id="pos-platform" class="h-10 w-full rounded-xl bg-white/5 px-2 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
-                    <option value="">Livreur / plateforme</option>
-                    @foreach($platforms as $platform)
-                        <option value="{{ $platform->id }}">{{ $platform->name }}</option>
-                    @endforeach
-                </select>
-                <input id="pos-address" type="text" maxlength="500" placeholder="Adresse de livraison" class="h-10 w-full rounded-xl bg-white/5 px-3 text-sm ring-1 ring-white/10 placeholder:text-slate-500 focus:outline-none focus:ring-emerald-500/50">
-            </div>
-            @if($discounts->isNotEmpty() || $taxes->isNotEmpty())
-                <div class="flex gap-2 overflow-x-auto pb-1">
-                    @foreach($discounts as $discount)
-                        <button type="button" class="pos-discount shrink-0 rounded-full bg-white/5 px-3 py-1.5 text-[11px] font-bold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
-                                data-kind="{{ $discount->meta('discount_type', 'percent') }}" data-value="{{ $discount->meta('value', 0) }}">{{ $discount->name }}</button>
-                    @endforeach
-                    @foreach($taxes as $tax)
-                        <button type="button" class="pos-tax shrink-0 rounded-full bg-white/5 px-3 py-1.5 text-[11px] font-bold text-slate-200 ring-1 ring-white/10 hover:bg-white/10"
-                                data-rate="{{ $tax->meta('rate', 0) }}">{{ $tax->name }}</button>
-                    @endforeach
-                </div>
-            @endif
             <label class="block">
                 <span class="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500">Notes</span>
                 <input id="pos-notes" type="text" maxlength="500" placeholder="Note ticket…" class="h-10 w-full rounded-xl bg-white/5 px-3 text-sm ring-1 ring-white/10 placeholder:text-slate-500 focus:outline-none focus:ring-emerald-500/50">
@@ -201,7 +242,7 @@
 
         <div class="grid grid-cols-2 gap-2 border-t border-white/10 p-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
             <button type="button" id="pos-clear" class="rounded-xl bg-white/5 py-3 text-sm font-bold ring-1 ring-white/10 hover:bg-rose-500/20">Vider</button>
-            <button type="button" id="pos-hold" class="rounded-xl bg-amber-500/20 py-3 text-sm font-bold text-amber-200 ring-1 ring-amber-500/30 hover:bg-amber-500/30 {{ $canHold ? '' : 'opacity-40' }}" {{ $canHold ? '' : 'disabled' }}>Suspendre</button>
+            <button type="button" id="pos-hold" class="rounded-xl bg-amber-500/20 py-3 text-sm font-bold text-amber-200 ring-1 ring-amber-500/30 hover:bg-amber-500/30 {{ $canHold ? '' : 'opacity-40' }}" {{ $canHold ? '' : 'disabled' }}>Enregistrer</button>
             <button type="button" id="pos-resume-btn" class="rounded-xl bg-sky-500/20 py-3 text-sm font-bold text-sky-200 ring-1 ring-sky-500/30 hover:bg-sky-500/30">Reprendre</button>
             <button type="button" id="pos-pay" class="rounded-xl bg-emerald-500 py-3 text-sm font-extrabold text-slate-950 hover:bg-emerald-400 sm:col-span-1 lg:col-span-2 xl:col-span-1">Payer (F4)</button>
         </div>
@@ -210,9 +251,9 @@
 
 {{-- Held sales modal --}}
 <div id="pos-held-modal" class="pos-modal-backdrop fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4">
-    <div class="w-full max-w-md rounded-3xl bg-[#111827] p-5 shadow-2xl ring-1 ring-white/10">
+    <div class="pos-dark w-full max-w-md rounded-3xl bg-[#111827] p-5 shadow-2xl ring-1 ring-white/10">
         <div class="mb-4 flex items-center justify-between">
-            <h3 class="text-lg font-bold">Ventes suspendues</h3>
+            <h3 class="text-lg font-bold">Tickets enregistrés</h3>
             <button type="button" data-close-held class="rounded-lg p-2 hover:bg-white/10">✕</button>
         </div>
         <ul class="max-h-80 space-y-2 overflow-y-auto">
@@ -220,22 +261,24 @@
                 <li>
                     <button type="button" class="pos-resume-item flex w-full items-center justify-between rounded-2xl bg-white/5 px-4 py-3 text-left ring-1 ring-white/10 hover:bg-white/10" data-id="{{ $h->id }}">
                         <span>
-                            <span class="block font-bold">{{ $h->number }}</span>
+                            <span class="block font-bold">{{ $h->ticket_name ?: $h->number }}</span>
+                            @if($h->ticket_name)<span class="block text-[11px] text-slate-500">{{ $h->number }}</span>@endif
                             <span class="text-xs text-slate-400">{{ optional($h->held_at)->format('d/m H:i') }}</span>
                         </span>
                         <span class="font-bold text-emerald-400">{{ number_format($h->total_ttc, 2, ',', ' ') }}</span>
                     </button>
                 </li>
             @empty
-                <li class="py-8 text-center text-sm text-slate-500">Aucune vente suspendue.</li>
+                <li class="py-8 text-center text-sm text-slate-400">Aucun ticket enregistré.</li>
             @endforelse
         </ul>
+        <a href="{{ route('pos.tickets.index', ['status' => 'archived']) }}" class="mt-3 block text-center text-xs text-slate-400 hover:text-white">Les tickets anciens sont archivés automatiquement — voir les archivés</a>
     </div>
 </div>
 
 {{-- Payment modal --}}
 <div id="pos-pay-modal" class="pos-modal-backdrop fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4">
-    <div class="w-full max-w-lg rounded-3xl bg-[#111827] p-5 shadow-2xl ring-1 ring-white/10">
+    <div class="pos-dark max-h-[94dvh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-[#111827] p-5 shadow-2xl ring-1 ring-white/10">
         <div class="mb-4 flex items-center justify-between">
             <h3 class="text-lg font-bold">Paiement</h3>
             <button type="button" data-close-pay class="rounded-lg p-2 hover:bg-white/10">✕</button>
@@ -243,8 +286,16 @@
         <p class="mb-1 text-xs font-bold uppercase tracking-wider text-slate-500">Total à encaisser</p>
         <p id="pay-total" class="mb-5 text-4xl font-extrabold text-emerald-400">0,00</p>
 
-        <div id="pay-methods" class="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3"></div>
-        <div id="pay-fields" class="mb-4 hidden space-y-2"></div>
+        <div class="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
+            @foreach($gridMethods as $mKey => $mLabel)
+                <button type="button" data-method="{{ $mKey }}" class="pay-method rounded-2xl {{ $mKey === 'cash' ? 'bg-emerald-500 text-slate-950' : 'bg-white/5 ring-1 ring-white/10' }} px-2 py-3 text-xs font-bold sm:text-sm">{{ $mLabel }}</button>
+            @endforeach
+        </div>
+
+        <div id="pay-instrument-block" class="mb-4 hidden grid grid-cols-2 gap-2">
+            <label class="block"><span class="mb-1 block text-xs font-bold text-slate-400">Numéro</span><input id="pay-reference" type="text" maxlength="120" class="h-11 w-full rounded-xl bg-white/5 px-3 text-sm font-bold ring-1 ring-white/10"></label>
+            <label class="block"><span class="mb-1 block text-xs font-bold text-slate-400">Échéance</span><input id="pay-due-date" type="date" class="h-11 w-full rounded-xl bg-white/5 px-3 text-sm font-bold ring-1 ring-white/10"></label>
+        </div>
 
         <div id="pay-cash-block" class="mb-4 space-y-3">
             <label class="block">
@@ -265,11 +316,19 @@
 
         <div id="pay-mixed-block" class="mb-4 hidden space-y-2">
             <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Paiement mixte</p>
-            <div class="grid grid-cols-3 gap-2">
-                <label class="block"><span class="text-[11px] text-slate-400">Espèces</span><input id="mix-cash" type="number" min="0" step="0.01" value="0" class="mt-1 h-11 w-full rounded-xl bg-white/5 px-3 text-sm font-bold ring-1 ring-white/10"></label>
-                <label class="block"><span class="text-[11px] text-slate-400">Carte</span><input id="mix-card" type="number" min="0" step="0.01" value="0" class="mt-1 h-11 w-full rounded-xl bg-white/5 px-3 text-sm font-bold ring-1 ring-white/10"></label>
-                <label class="block"><span class="text-[11px] text-slate-400">Mobile</span><input id="mix-mobile" type="number" min="0" step="0.01" value="0" class="mt-1 h-11 w-full rounded-xl bg-white/5 px-3 text-sm font-bold ring-1 ring-white/10"></label>
+            <div class="space-y-2">
+                @foreach($gridMethods as $mKey => $mLabel)
+                    <div class="grid grid-cols-12 items-center gap-2 rounded-xl bg-white/[.03] p-2">
+                        <span class="col-span-12 text-sm font-semibold sm:col-span-3">{{ $mLabel }}</span>
+                        <input data-mix="{{ $mKey }}" type="number" min="0" step="0.01" value="0" aria-label="Montant {{ $mLabel }}" class="col-span-12 h-11 w-full rounded-xl px-3 text-base font-bold ring-1 ring-white/15 sm:col-span-3">
+                        @if(in_array($mKey, $instrumentMethods, true))
+                            <input data-mix-ref="{{ $mKey }}" type="text" placeholder="Numéro" class="col-span-6 h-11 w-full rounded-xl px-3 text-sm ring-1 ring-white/15 sm:col-span-3">
+                            <input data-mix-due="{{ $mKey }}" type="date" aria-label="Échéance" class="col-span-6 h-11 w-full rounded-xl px-2 text-sm ring-1 ring-white/15 sm:col-span-3">
+                        @endif
+                    </div>
+                @endforeach
             </div>
+            <p class="text-[11px] text-slate-500">Reste à répartir : <span id="mix-remaining" class="font-bold text-amber-300">0,00</span></p>
             <button type="button" id="pay-enable-mixed" class="text-xs font-semibold text-sky-300 hover:underline">Activer le mixte</button>
         </div>
         <button type="button" id="pay-toggle-mixed" class="mb-4 text-xs font-semibold text-sky-300 hover:underline">Paiement mixte…</button>
@@ -282,38 +341,9 @@
     </div>
 </div>
 
-<div id="pos-option-modal" class="pos-modal-backdrop fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4">
-    <div class="w-full max-w-md rounded-3xl bg-[#111827] p-5 shadow-2xl ring-1 ring-white/10">
-        <div class="mb-4 flex items-center justify-between">
-            <h3 id="opt-title" class="text-lg font-bold">Options</h3>
-            <button type="button" data-close-opt class="rounded-lg p-2 hover:bg-white/10">✕</button>
-        </div>
-        <div id="opt-body" class="max-h-80 space-y-4 overflow-y-auto"></div>
-        <p class="mt-4 text-sm text-slate-400">Prix <span id="opt-price" class="text-lg font-extrabold text-emerald-400">0,00</span></p>
-        <p id="opt-error" class="mt-2 hidden text-sm font-semibold text-rose-400"></p>
-        <div class="mt-4 flex gap-2">
-            <button type="button" data-close-opt class="flex-1 rounded-2xl bg-white/5 py-3 text-sm font-bold ring-1 ring-white/10">Annuler</button>
-            <button type="button" id="opt-add" class="flex-[1.4] rounded-2xl bg-emerald-500 py-3 text-sm font-extrabold text-slate-950">Ajouter</button>
-        </div>
-    </div>
-</div>
+<script src="{{ asset('js/pos-offline.js') }}?v={{ \App\Support\RimalOffline::version() }}"></script>
 
 <div id="pos-toast" class="pointer-events-none fixed bottom-6 left-1/2 z-[60] hidden -translate-x-1/2 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-bold text-slate-950 shadow-xl pos-toast"></div>
-<script type="application/json" id="pos-lists">@json([
-    'payments' => $paymentModes->map(fn ($m) => [
-        'id' => $m->id,
-        'name' => $m->name,
-        'method' => $m->meta('method', 'cash'),
-        'timing' => $m->meta('timing', 'immediate'),
-        'required_fields' => array_values((array) $m->meta('required_fields', [])),
-    ])->values(),
-    'fallback' => [
-        ['id' => null, 'name' => 'Espèces', 'method' => 'cash', 'timing' => 'immediate', 'required_fields' => []],
-        ['id' => null, 'name' => 'Carte', 'method' => 'card', 'timing' => 'immediate', 'required_fields' => []],
-        ['id' => null, 'name' => 'Mobile', 'method' => 'mobile', 'timing' => 'immediate', 'required_fields' => []],
-    ],
-])</script>
-<script src="{{ asset('js/pos-offline.js') }}"></script>
 
 <script>
 (() => {
@@ -329,29 +359,21 @@
         snapshotUrl: root.dataset.snapshotUrl,
         syncUrl: root.dataset.syncUrl,
     };
-
-    const lists = JSON.parse(document.getElementById('pos-lists').textContent || '{}');
-    let paymentModes = (lists.payments && lists.payments.length) ? lists.payments : (lists.fallback || []);
-    const fieldLabels = {
-        transfer_mode: 'Mode de virement',
-        transaction_number: 'N° transaction',
-        piece_number: 'N° de pièce',
-        bank_name: 'Banque',
-        issue_date: 'Date d\'émission',
-        due_date: 'Date d\'échéance',
-    };
+    const Offline = window.GreenPosOffline || null;
+    let checkoutUuid = null;
 
     const initialCatalog = @json($catalog);
+    const instrumentMethods = @json($instrumentMethods);
+    const methodLabels = @json($paymentMethods);
     let products = initialCatalog.slice();
     let categoryId = '';
     let cart = [];
     let searchTimer = null;
-    let payMode = paymentModes[0] || { id: null, method: 'cash', timing: 'immediate', required_fields: [] };
+    let payMethod = 'cash';
     let mixedMode = false;
     let heldSaleId = null;
     let barcodeBuffer = '';
     let barcodeTimer = null;
-    let pendingProduct = null;
 
     const el = {
         search: document.getElementById('pos-search'),
@@ -373,19 +395,6 @@
         payError: document.getElementById('pay-error'),
         cashBlock: document.getElementById('pay-cash-block'),
         toast: document.getElementById('pos-toast'),
-        methods: document.getElementById('pay-methods'),
-        fields: document.getElementById('pay-fields'),
-        service: document.getElementById('pos-service'),
-        ticket: document.getElementById('pos-ticket'),
-        delivery: document.getElementById('pos-delivery'),
-        platform: document.getElementById('pos-platform'),
-        address: document.getElementById('pos-address'),
-        offlinePill: document.getElementById('pos-offline-pill'),
-        optModal: document.getElementById('pos-option-modal'),
-        optBody: document.getElementById('opt-body'),
-        optTitle: document.getElementById('opt-title'),
-        optPrice: document.getElementById('opt-price'),
-        optError: document.getElementById('opt-error'),
     };
 
     const money = (n) => Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -401,11 +410,22 @@
         toast._t = setTimeout(() => el.toast.classList.add('hidden'), 2200);
     }
 
+    function ticketDiscount() {
+        const v = Number(document.getElementById('pos-ticket-discount')?.value || 0);
+        return Math.min(100, Math.max(0, v));
+    }
+
+    function effectiveDiscount(l) {
+        const td = ticketDiscount();
+        const ld = Number(l.discount || 0);
+        return td > 0 ? 100 - (100 - ld) * (100 - td) / 100 : ld;
+    }
+
     function totals() {
         let sub = 0, disc = 0, tax = 0;
         cart.forEach((l) => {
-            const gross = l.qty * (Number(l.basePrice || l.price || 0) + Number(l.optionExtra || 0));
-            const d = gross * ((l.discount || 0) / 100);
+            const gross = l.qty * l.price;
+            const d = gross * (effectiveDiscount(l) / 100);
             const net = gross - d;
             const t = net * ((l.tax || 0) / 100);
             sub += net; disc += d; tax += t;
@@ -430,15 +450,16 @@
                 <div class="flex items-start justify-between gap-2">
                     <div class="min-w-0">
                         <p class="truncate text-sm font-bold">${escapeHtml(l.name)}</p>
-                        <p class="text-xs text-slate-400">${money(l.basePrice + (l.optionExtra || 0))} · TVA ${l.tax}%${l.optionLabel ? ' · ' + escapeHtml(l.optionLabel) : ''}</p>
+                        <p class="text-xs text-slate-400">${money(l.price)} · TVA ${l.tax}%</p>
                     </div>
                     <button type="button" data-remove="${i}" class="rounded-lg px-2 py-1 text-rose-300 hover:bg-rose-500/20">✕</button>
                 </div>
-                <div class="mt-2 flex items-center gap-2">
+                <div class="mt-2 flex flex-wrap items-center gap-2">
                     <button type="button" data-dec="${i}" class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-lg font-bold">−</button>
                     <input data-qty="${i}" type="number" min="0.001" step="1" value="${l.qty}" class="h-10 w-16 rounded-xl bg-[#0b1220] text-center text-sm font-bold ring-1 ring-white/10">
                     <button type="button" data-inc="${i}" class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-lg font-bold">+</button>
-                    <input data-disc="${i}" type="number" min="0" max="100" step="1" value="${l.discount || 0}" title="Remise %" class="ml-auto h-10 w-16 rounded-xl bg-[#0b1220] text-center text-xs font-bold ring-1 ring-white/10" placeholder="%">
+                    <label class="ml-auto flex items-center gap-1 text-[11px] font-semibold text-slate-300">Remise
+                        <input data-disc="${i}" type="number" min="0" max="100" step="1" value="${l.discount || 0}" title="Remise sur la ligne (%)" class="h-10 w-16 rounded-xl bg-[#0b1220] text-center text-sm font-bold ring-1 ring-white/20" placeholder="%">%</label>
                     <span class="min-w-[4.5rem] text-right text-sm font-extrabold text-emerald-300">${money(lineTotal(l))}</span>
                 </div>
             </div>
@@ -446,9 +467,8 @@
     }
 
     function lineTotal(l) {
-        const unit = Number(l.basePrice || l.price || 0) + Number(l.optionExtra || 0);
-        const gross = l.qty * unit;
-        const d = gross * ((l.discount || 0) / 100);
+        const gross = l.qty * l.price;
+        const d = gross * (effectiveDiscount(l) / 100);
         const net = gross - d;
         return net + net * ((l.tax || 0) / 100);
     }
@@ -457,13 +477,12 @@
         return String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
-    function optionKey(ids) {
-        return (ids || []).map(Number).slice().sort((a, b) => a - b).join(',');
-    }
-
-    function pushLine(p, qty, optionIds, optionExtra, optionLabel) {
-        const ids = (optionIds || []).map(Number);
-        const existing = cart.find((l) => l.product_id === p.id && optionKey(l.option_variant_ids) === optionKey(ids));
+    function addProduct(p, qty = 1) {
+        if (!cfg.sessionOpen) {
+            toast('Ouvrez une caisse avant de vendre', false);
+            return;
+        }
+        const existing = cart.find((l) => l.product_id === p.id);
         if (existing) {
             existing.qty += qty;
         } else {
@@ -471,11 +490,7 @@
                 product_id: p.id,
                 name: p.name,
                 sku: p.sku,
-                basePrice: Number(p.sale_price),
                 price: Number(p.sale_price),
-                optionExtra: Number(optionExtra || 0),
-                option_variant_ids: ids,
-                optionLabel: optionLabel || '',
                 tax: Number(p.tax_rate ?? 20),
                 qty,
                 discount: 0,
@@ -483,86 +498,6 @@
         }
         renderCart();
         toast(p.name + ' ajouté');
-    }
-
-    function addProduct(p, qty = 1) {
-        if (!cfg.sessionOpen) {
-            toast('Ouvrez une caisse avant de vendre', false);
-            return;
-        }
-        const full = products.find((x) => Number(x.id) === Number(p.id)) || p;
-        const options = full.options || [];
-        if (options.length && !p._configured) {
-            openOptions(full);
-            return;
-        }
-        pushLine(full, qty, p.option_variant_ids || [], p.optionExtra || 0, p.optionLabel || '');
-    }
-
-    function openOptions(p) {
-        pendingProduct = p;
-        el.optTitle.textContent = p.name;
-        el.optError.classList.add('hidden');
-        el.optBody.innerHTML = (p.options || []).map((option) => `
-            <fieldset class="space-y-1">
-                <legend class="text-xs font-bold uppercase tracking-wider text-slate-400">${escapeHtml(option.name)}${option.is_required ? ' *' : ''}</legend>
-                ${(option.variants || []).map((variant) => `
-                    <label class="flex items-center justify-between gap-2 rounded-xl bg-white/5 px-3 py-2 text-sm ring-1 ring-white/10">
-                        <span class="flex items-center gap-2">
-                            <input type="${option.selection_mode === 'fixed' ? 'radio' : 'checkbox'}" name="opt-${option.id}" value="${variant.id}" data-extra="${variant.extra_price}" data-name="${escapeHtml(variant.name)}" data-option="${option.id}" ${option.is_required && option.selection_mode === 'fixed' ? '' : ''}>
-                            ${escapeHtml(variant.name)}
-                        </span>
-                        <span class="text-emerald-300">+${money(variant.extra_price)}</span>
-                    </label>
-                `).join('')}
-            </fieldset>
-        `).join('');
-        updateOptionPrice();
-        el.optModal.classList.remove('hidden');
-        el.optModal.classList.add('flex');
-    }
-
-    function selectedOptions() {
-        const inputs = [...el.optBody.querySelectorAll('input:checked')];
-        return inputs.map((input) => ({
-            id: Number(input.value),
-            extra: Number(input.dataset.extra || 0),
-            name: input.dataset.name || '',
-            optionId: Number(input.dataset.option),
-        }));
-    }
-
-    function updateOptionPrice() {
-        if (!pendingProduct) return;
-        const extra = selectedOptions().reduce((sum, row) => sum + row.extra, 0);
-        el.optPrice.textContent = money(Number(pendingProduct.sale_price) + extra);
-    }
-
-    function confirmOptions() {
-        if (!pendingProduct) return;
-        const chosen = selectedOptions();
-        for (const option of pendingProduct.options || []) {
-            const count = chosen.filter((row) => row.optionId === option.id).length;
-            if (option.is_required && count === 0) {
-                el.optError.textContent = option.name + ' est obligatoire.';
-                el.optError.classList.remove('hidden');
-                return;
-            }
-            if (option.selection_mode === 'fixed' && count > 1) {
-                el.optError.textContent = option.name + ' n\'accepte qu\'un seul choix.';
-                el.optError.classList.remove('hidden');
-                return;
-            }
-        }
-        const extra = chosen.reduce((sum, row) => sum + row.extra, 0);
-        pushLine(pendingProduct, 1, chosen.map((row) => row.id), extra, chosen.map((row) => row.name).join(', '));
-        closeOptions();
-    }
-
-    function closeOptions() {
-        pendingProduct = null;
-        el.optModal.classList.add('hidden');
-        el.optModal.classList.remove('flex');
     }
 
     function renderProducts(list) {
@@ -578,7 +513,7 @@
                 : '<span class="text-[10px] text-slate-500">Service</span>';
             return `
                 <button type="button" class="pos-product flex min-h-[110px] flex-col justify-between rounded-2xl bg-white/5 p-3 text-left ring-1 ring-white/10 hover:bg-emerald-500/15 hover:ring-emerald-500/40"
-                        data-product-id="${p.id}">
+                        data-add='${JSON.stringify({ id: p.id, name: p.name, sale_price: p.sale_price, tax_rate: p.tax_rate, sku: p.sku }).replace(/'/g, '&#39;')}'>
                     <span class="line-clamp-2 text-sm font-bold leading-snug">${escapeHtml(p.name)}</span>
                     <span class="mt-2 flex items-end justify-between gap-1">
                         <span class="text-base font-extrabold text-emerald-400">${money(p.sale_price)}</span>
@@ -588,83 +523,37 @@
         }).join('');
     }
 
-    function filterLocal(list, q) {
-        const needle = (q || '').trim().toLowerCase();
-        return (list || []).filter((p) => {
-            if (categoryId && String(p.category_id) !== String(categoryId)) return false;
-            if (!needle) return true;
-            return String(p.name || '').toLowerCase().includes(needle)
-                || String(p.sku || '').toLowerCase().includes(needle)
-                || String(p.barcode || '') === q.trim();
-        });
-    }
-
     async function fetchCatalog(q = '') {
         const url = new URL(cfg.catalogUrl, window.location.origin);
         if (q) url.searchParams.set('q', q);
         if (categoryId) url.searchParams.set('category_id', categoryId);
         try {
             const res = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
-            if (!res.ok) throw new Error('catalog');
             const data = await res.json();
             products = data.products || [];
-            renderProducts(products);
-            setOffline(false);
         } catch (e) {
-            const cached = window.GreenPosOffline ? await window.GreenPosOffline.products() : products;
-            products = filterLocal(cached, q);
-            renderProducts(products);
-            setOffline(true);
+            // Hors ligne : catalogue du dernier instantané IndexedDB, filtré localement.
+            const all = Offline ? await Offline.products() : [];
+            const needle = (q || '').toLowerCase();
+            products = (all.length ? all : initialCatalog).filter((p) =>
+                (!categoryId || String(p.category_id) === String(categoryId))
+                && (!needle || (p.name || '').toLowerCase().includes(needle) || p.sku === q || p.barcode === q));
         }
+        renderProducts(products);
     }
 
     function payloadItems() {
         return cart.map((l) => ({
             product_id: l.product_id,
             quantity: l.qty,
-            unit_price: Number(l.basePrice ?? l.price),
+            unit_price: l.price,
             discount_percent: l.discount || 0,
-            option_variant_ids: l.option_variant_ids || [],
         }));
-    }
-
-    function saleContext() {
-        const service = el.service?.selectedOptions?.[0];
-        const ticket = el.ticket?.selectedOptions?.[0];
-        return {
-            service_mode_list_id: el.service?.value ? Number(el.service.value) : null,
-            predefined_ticket_id: el.ticket?.value ? Number(el.ticket.value) : null,
-            ticket_name: ticket?.dataset?.name || null,
-            ticket_group: ticket?.dataset?.group || null,
-            delivery_platform_id: el.platform?.value ? Number(el.platform.value) : null,
-            delivery_address: el.address?.value || null,
-            requires_agent: service?.dataset?.agent === '1',
-        };
-    }
-
-    function syncDelivery() {
-        if (!el.service || !el.delivery) return;
-        const needs = el.service.selectedOptions[0]?.dataset.agent === '1';
-        el.delivery.classList.toggle('hidden', !needs);
-        const platformId = el.service.selectedOptions[0]?.dataset.platform;
-        if (needs && platformId && el.platform && !el.platform.value) {
-            el.platform.value = platformId;
-        }
-    }
-
-    function renderPayMethods() {
-        el.methods.innerHTML = paymentModes.map((mode, index) => `
-            <button type="button" data-mode-index="${index}" class="pay-method rounded-2xl py-3 text-sm font-bold ${index === 0 ? 'bg-emerald-500 text-slate-950' : 'bg-white/5 ring-1 ring-white/10'}">${escapeHtml(mode.name)}</button>
-        `).join('');
     }
 
     function openPay() {
         if (!cart.length) return toast('Panier vide', false);
         if (!cfg.sessionOpen) return toast('Ouvrez une caisse', false);
-        const ctx = saleContext();
-        if (ctx.requires_agent && !ctx.delivery_platform_id) {
-            return toast('Choisissez un livreur ou une plateforme', false);
-        }
         const t = totals();
         el.payTotal.textContent = money(t.total);
         el.tendered.value = t.total.toFixed(2);
@@ -672,55 +561,30 @@
         el.payError.classList.add('hidden');
         mixedMode = false;
         document.getElementById('pay-mixed-block').classList.add('hidden');
-        renderPayMethods();
-        setMode(0);
+        el.cashBlock.classList.remove('hidden');
+        setMethod('cash');
         el.payModal.classList.remove('hidden');
         el.payModal.classList.add('flex');
-        if (payMode.method === 'cash' && payMode.timing !== 'deferred') {
-            el.tendered.focus();
-            el.tendered.select();
-        }
+        el.tendered.focus();
+        el.tendered.select();
     }
 
-    function setMode(index) {
-        payMode = paymentModes[index] || paymentModes[0];
+    function setMethod(m) {
+        payMethod = m;
         document.querySelectorAll('.pay-method').forEach((btn) => {
-            const on = Number(btn.dataset.modeIndex) === Number(index);
+            const on = btn.dataset.method === m;
             btn.classList.toggle('bg-emerald-500', on);
             btn.classList.toggle('text-slate-950', on);
             btn.classList.toggle('bg-white/5', !on);
             btn.classList.toggle('ring-1', !on);
             btn.classList.toggle('ring-white/10', !on);
         });
-        const showCash = !mixedMode && payMode.method === 'cash' && payMode.timing !== 'deferred';
-        el.cashBlock.classList.toggle('hidden', !showCash);
-        renderPayFields();
-        if (!showCash) {
+        el.cashBlock.classList.toggle('hidden', m !== 'cash' || mixedMode);
+        document.getElementById('pay-instrument-block').classList.toggle('hidden', mixedMode || !instrumentMethods.includes(m));
+        if (m !== 'cash') {
             el.tendered.value = totals().total.toFixed(2);
             updateChange();
         }
-    }
-
-    function renderPayFields() {
-        const fields = (payMode.required_fields || []).filter((field) => fieldLabels[field]);
-        if (!fields.length || mixedMode) {
-            el.fields.classList.add('hidden');
-            el.fields.innerHTML = '';
-            return;
-        }
-        el.fields.classList.remove('hidden');
-        el.fields.innerHTML = fields.map((field) => {
-            const type = field.endsWith('_date') ? 'date' : 'text';
-            return `<label class="block"><span class="mb-1 block text-xs font-bold text-slate-400">${fieldLabels[field]}</span><input data-pay-field="${field}" type="${type}" class="h-11 w-full rounded-xl bg-white/5 px-3 text-sm ring-1 ring-white/10"></label>`;
-        }).join('');
-    }
-
-    function paymentExtras() {
-        const extra = {};
-        el.fields.querySelectorAll('[data-pay-field]').forEach((input) => {
-            extra[input.dataset.payField] = input.value || null;
-        });
-        return extra;
     }
 
     function updateChange() {
@@ -729,47 +593,50 @@
         el.change.textContent = money(Math.max(0, tendered - total));
     }
 
-    function buildSaleBody(payments) {
-        const ctx = saleContext();
-        return {
-            items: payloadItems(),
-            payments,
-            customer_id: el.customer.value || null,
-            notes: el.notes.value || null,
-            held_sale_id: heldSaleId,
-            client_uuid: (window.crypto?.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-                const r = Math.random() * 16 | 0;
-                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-            })),
-            service_mode_list_id: ctx.service_mode_list_id,
-            predefined_ticket_id: ctx.predefined_ticket_id,
-            ticket_name: ctx.ticket_name,
-            ticket_group: ctx.ticket_group,
-            delivery_platform_id: ctx.delivery_platform_id,
-            delivery_address: ctx.delivery_address,
-        };
-    }
-
     async function confirmPay() {
         const total = totals().total;
         let payments = [];
         if (mixedMode) {
-            const cash = Number(document.getElementById('mix-cash').value || 0);
-            const card = Number(document.getElementById('mix-card').value || 0);
-            const mobile = Number(document.getElementById('mix-mobile').value || 0);
-            if (cash > 0) payments.push({ method: 'cash', amount: cash, tendered: cash });
-            if (card > 0) payments.push({ method: 'card', amount: card });
-            if (mobile > 0) payments.push({ method: 'mobile', amount: mobile });
-        } else if (payMode.method === 'cash' && payMode.timing !== 'deferred') {
+            let bad = null;
+            document.querySelectorAll('[data-mix]').forEach((inp) => {
+                const m = inp.dataset.mix;
+                const amount = Number(inp.value || 0);
+                if (amount <= 0) return;
+                const p = { method: m, amount };
+                if (m === 'cash') p.tendered = amount;
+                if (instrumentMethods.includes(m)) {
+                    p.reference = document.querySelector(`[data-mix-ref="${m}"]`)?.value || '';
+                    p.due_date = document.querySelector(`[data-mix-due="${m}"]`)?.value || '';
+                    if (!p.reference || !p.due_date) bad = methodLabels[m];
+                }
+                payments.push(p);
+            });
+            if (bad) {
+                el.payError.textContent = 'Numéro et échéance obligatoires pour : ' + bad;
+                el.payError.classList.remove('hidden');
+                return;
+            }
+        } else if (payMethod === 'cash') {
             const tendered = Number(el.tendered.value || 0);
             if (tendered + 0.001 < total) {
                 el.payError.textContent = 'Montant reçu insuffisant.';
                 el.payError.classList.remove('hidden');
                 return;
             }
-            payments = [{ method: payMode.method, custom_list_id: payMode.id, amount: total, tendered, ...paymentExtras() }];
+            payments = [{ method: 'cash', amount: total, tendered }];
         } else {
-            payments = [{ method: payMode.method, custom_list_id: payMode.id, amount: total, ...paymentExtras() }];
+            payments = [{ method: payMethod, amount: total }];
+            if (instrumentMethods.includes(payMethod)) {
+                const reference = document.getElementById('pay-reference').value.trim();
+                const due = document.getElementById('pay-due-date').value;
+                if (!reference || !due) {
+                    el.payError.textContent = 'Numéro et date d’échéance obligatoires.';
+                    el.payError.classList.remove('hidden');
+                    return;
+                }
+                payments[0].reference = reference;
+                payments[0].due_date = due;
+            }
         }
 
         const paid = payments.reduce((s, p) => s + Number(p.amount), 0);
@@ -779,14 +646,31 @@
             return;
         }
 
-        const body = buildSaleBody(payments);
+        const body = {
+            items: payloadItems(),
+            payments,
+            customer_id: el.customer.value || null,
+            notes: el.notes.value || null,
+            held_sale_id: heldSaleId,
+            service_mode: document.getElementById('pos-service-mode')?.value || null,
+            employee_id: document.getElementById('pos-employee')?.value || null,
+            delivery_agent_id: document.getElementById('pos-delivery-agent')?.value || null,
+            delivery_platform_id: document.getElementById('pos-delivery-platform')?.value || null,
+            ticket_discount_percent: ticketDiscount(),
+            ticket_name: document.getElementById('pos-ticket-name')?.value || null,
+            pos_table_id: document.getElementById('pos-table')?.value || null,
+        };
+        // UUID client stable pour ce ticket : un double envoi ou une resynchro ne crée jamais de doublon.
+        if (!checkoutUuid && Offline) checkoutUuid = Offline.uuid();
+        if (checkoutUuid) body.client_uuid = checkoutUuid;
+
+        if (Offline && !navigator.onLine) {
+            await queueOffline(body);
+            return;
+        }
 
         document.getElementById('pay-confirm').disabled = true;
         try {
-            if (!navigator.onLine) {
-                await queueOffline(body);
-                return;
-            }
             const res = await fetch(cfg.checkoutUrl, {
                 method: 'POST',
                 headers: {
@@ -804,15 +688,21 @@
             cart = [];
             renderCart();
             el.notes.value = '';
+            resetTicketMeta();
             heldSaleId = null;
+            checkoutUuid = null;
             closePay();
             toast('Ticket ' + data.number + ' validé');
             if (data.receipt_url) {
                 setTimeout(() => window.open(data.receipt_url, '_blank'), 300);
             }
+            if (data.kitchen_url) {
+                setTimeout(() => window.open(data.kitchen_url, '_blank'), 500);
+            }
             fetchCatalog(el.search.value.trim());
         } catch (e) {
-            if (!navigator.onLine || e instanceof TypeError) {
+            if (Offline && e instanceof TypeError) {
+                // Réseau coupé pendant l'envoi : le ticket part dans la file hors ligne (même UUID).
                 await queueOffline(body);
                 return;
             }
@@ -820,29 +710,6 @@
             el.payError.classList.remove('hidden');
         } finally {
             document.getElementById('pay-confirm').disabled = false;
-        }
-    }
-
-    async function queueOffline(body) {
-        if (!window.GreenPosOffline) {
-            el.payError.textContent = 'Hors ligne : file locale indisponible.';
-            el.payError.classList.remove('hidden');
-            return;
-        }
-        await window.GreenPosOffline.enqueue(body);
-        cart = [];
-        renderCart();
-        closePay();
-        setOffline(true);
-        toast('Vente mise en file hors ligne');
-    }
-
-    function setOffline(on) {
-        el.offlinePill?.classList.toggle('hidden', !on);
-        if (on && window.GreenPosOffline) {
-            window.GreenPosOffline.count().then((n) => {
-                el.offlinePill.textContent = n ? ('Hors ligne · ' + n + ' en attente') : 'Hors ligne';
-            });
         }
     }
 
@@ -861,13 +728,20 @@
                     items: payloadItems(),
                     customer_id: el.customer.value || null,
                     notes: el.notes.value || null,
+                    ticket_name: document.getElementById('pos-ticket-name')?.value || null,
+                    ticket_discount_percent: ticketDiscount(),
+                    service_mode: document.getElementById('pos-service-mode')?.value || null,
+                    pos_table_id: document.getElementById('pos-table')?.value || null,
+                    held_sale_id: heldSaleId,
                 }),
             });
             const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.message || 'Impossible de suspendre');
+            if (!res.ok) throw new Error(data.message || Object.values(data.errors || {}).flat()[0] || 'Impossible d’enregistrer');
             cart = [];
+            heldSaleId = null;
+            resetTicketMeta();
             renderCart();
-            toast('Suspendue : ' + data.number);
+            toast('Ticket enregistré : ' + data.number);
             setTimeout(() => location.reload(), 600);
         } catch (e) {
             toast(e.message, false);
@@ -887,17 +761,10 @@
                 sale_price: it.unit_price || 0,
                 tax_rate: 20,
             };
-            const ids = (it.option_variant_ids || []).map(Number);
-            const variants = (p.options || []).flatMap((option) => option.variants || []);
-            const chosen = variants.filter((variant) => ids.includes(Number(variant.id)));
             cart.push({
                 product_id: it.product_id,
                 name: p.name,
-                basePrice: Number(it.unit_price ?? p.sale_price),
                 price: Number(it.unit_price ?? p.sale_price),
-                optionExtra: chosen.reduce((sum, variant) => sum + Number(variant.extra_price || 0), 0),
-                optionLabel: chosen.map((variant) => variant.name).join(', '),
-                option_variant_ids: ids,
                 tax: Number(p.tax_rate ?? 20),
                 qty: Number(it.quantity),
                 discount: Number(it.discount_percent || 0),
@@ -905,10 +772,32 @@
         }
         if (data.payload?.customer_id) el.customer.value = String(data.payload.customer_id);
         if (data.payload?.notes) el.notes.value = data.payload.notes;
+        const meta = data.payload?.meta || {};
+        document.getElementById('pos-ticket-name').value = data.ticket_name || '';
+        document.getElementById('pos-ticket-discount').value = data.ticket_discount_percent || 0;
+        document.getElementById('pos-table').value = data.pos_table_id ? String(data.pos_table_id) : '';
+        if (meta.service_mode) document.getElementById('pos-service-mode').value = meta.service_mode;
         heldSaleId = data.sale_id || id;
         renderCart();
         closeHeld();
         toast('Reprise ' + data.number);
+    }
+
+    function resetTicketMeta() {
+        ['pos-ticket-name', 'pos-table', 'pos-delivery-platform'].forEach((id) => {
+            const n = document.getElementById(id);
+            if (n) n.value = '';
+        });
+        const td = document.getElementById('pos-ticket-discount');
+        if (td) td.value = 0;
+    }
+
+    function updateMixRemaining() {
+        const total = totals().total;
+        let paid = 0;
+        document.querySelectorAll('[data-mix]').forEach((i) => { paid += Number(i.value || 0); });
+        const r = document.getElementById('mix-remaining');
+        if (r) r.textContent = money(Math.max(0, total - paid));
     }
 
     function closePay() {
@@ -962,10 +851,9 @@
     });
 
     el.grid.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-product-id]');
+        const btn = e.target.closest('[data-add]');
         if (!btn) return;
-        const p = products.find((x) => String(x.id) === String(btn.dataset.productId));
-        if (p) addProduct(p);
+        addProduct(JSON.parse(btn.getAttribute('data-add')));
     });
 
     document.querySelectorAll('.pos-fav').forEach((btn) => {
@@ -1017,31 +905,8 @@
     });
     document.querySelectorAll('[data-close-pay]').forEach((b) => b.addEventListener('click', closePay));
     document.querySelectorAll('[data-close-held]').forEach((b) => b.addEventListener('click', closeHeld));
-    document.querySelectorAll('[data-close-opt]').forEach((b) => b.addEventListener('click', closeOptions));
-    document.getElementById('opt-add').addEventListener('click', confirmOptions);
-    el.optBody.addEventListener('change', updateOptionPrice);
     document.querySelectorAll('.pos-resume-item').forEach((b) => b.addEventListener('click', () => resumeSale(b.dataset.id)));
-    el.methods.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-mode-index]');
-        if (!btn) return;
-        setMode(Number(btn.dataset.modeIndex));
-    });
-    el.service?.addEventListener('change', syncDelivery);
-    document.querySelectorAll('.pos-discount').forEach((btn) => btn.addEventListener('click', () => {
-        const kind = btn.dataset.kind;
-        const value = Number(btn.dataset.value || 0);
-        const base = totals().subtotal || 1;
-        const percent = kind === 'amount' ? Math.min(100, (value / base) * 100) : value;
-        cart.forEach((line) => { line.discount = Math.min(100, Math.max(0, percent)); });
-        renderCart();
-        toast('Remise appliquée');
-    }));
-    document.querySelectorAll('.pos-tax').forEach((btn) => btn.addEventListener('click', () => {
-        const rate = Number(btn.dataset.rate || 0);
-        cart.forEach((line) => { line.tax = rate; });
-        renderCart();
-        toast('Taxe ' + rate + '%');
-    }));
+    document.querySelectorAll('.pay-method').forEach((b) => b.addEventListener('click', () => setMethod(b.dataset.method)));
     el.tendered.addEventListener('input', updateChange);
     document.querySelectorAll('[data-quick]').forEach((b) => b.addEventListener('click', () => {
         const v = b.dataset.quick;
@@ -1052,23 +917,29 @@
     document.getElementById('pay-toggle-mixed').addEventListener('click', () => {
         mixedMode = !mixedMode;
         document.getElementById('pay-mixed-block').classList.toggle('hidden', !mixedMode);
-        el.cashBlock.classList.toggle('hidden', mixedMode || payMode.method !== 'cash' || payMode.timing === 'deferred');
-        renderPayFields();
+        el.cashBlock.classList.toggle('hidden', mixedMode || payMethod !== 'cash');
+        document.getElementById('pay-instrument-block').classList.toggle('hidden', mixedMode || !instrumentMethods.includes(payMethod));
         if (mixedMode) {
             const t = totals().total;
-            document.getElementById('mix-cash').value = t.toFixed(2);
-            document.getElementById('mix-card').value = '0';
-            document.getElementById('mix-mobile').value = '0';
+            document.querySelectorAll('[data-mix]').forEach((i) => { i.value = i.dataset.mix === 'cash' ? t.toFixed(2) : '0'; });
+            updateMixRemaining();
         }
     });
     document.getElementById('pay-confirm').addEventListener('click', confirmPay);
+    document.querySelectorAll('[data-mix]').forEach((i) => i.addEventListener('input', updateMixRemaining));
+    document.getElementById('pos-ticket-discount').addEventListener('input', renderCart);
+    document.getElementById('pos-delivery-platform').addEventListener('change', (e) => {
+        if (e.target.value) {
+            document.getElementById('pos-service-mode').value = 'delivery';
+            document.getElementById('pos-delivery-agent').value = '';
+        }
+    });
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'F2') { e.preventDefault(); el.search.focus(); el.search.select(); }
         if (e.key === 'F4') { e.preventDefault(); openPay(); }
         if (e.key === 'Escape') {
-            if (!el.optModal.classList.contains('hidden')) closeOptions();
-            else if (!el.payModal.classList.contains('hidden')) closePay();
+            if (!el.payModal.classList.contains('hidden')) closePay();
             else if (!el.heldModal.classList.contains('hidden')) closeHeld();
             else if (cart.length && confirm('Vider le panier ?')) { cart = []; renderCart(); }
         }
@@ -1100,50 +971,90 @@
         }
     });
 
-    async function refreshSnapshot() {
-        if (!window.GreenPosOffline || !navigator.onLine) return;
+    async function queueOffline(body) {
+        const row = Object.assign({}, body, { offline_at: new Date().toISOString() });
+        await Offline.enqueue(row);
+        cart = [];
+        renderCart();
+        el.notes.value = '';
+        resetTicketMeta();
+        heldSaleId = null;
+        checkoutUuid = null;
+        closePay();
+        toast('Hors ligne : ticket enregistré localement, synchronisation automatique au retour du réseau');
+        refreshNetStatus();
+    }
+
+    async function refreshNetStatus() {
+        const label = document.getElementById('pos-net-label');
+        const dot = document.getElementById('pos-net-dot');
+        const box = document.getElementById('pos-net-status');
+        if (!label) return;
+        const n = Offline ? await Offline.count().catch(() => 0) : 0;
+        const online = navigator.onLine;
+        label.textContent = (online ? 'En ligne' : 'Hors ligne') + (n ? ' · ' + n + ' en attente' : '');
+        dot.className = 'h-2 w-2 rounded-full ' + (online ? (n ? 'bg-amber-500' : 'bg-emerald-500') : 'bg-rose-500');
+        box.classList.toggle('ring-rose-300', !online);
+    }
+
+    let syncing = false;
+    async function syncQueue() {
+        if (!Offline || syncing || !navigator.onLine) return refreshNetStatus();
+        syncing = true;
         try {
-            const res = await fetch(cfg.snapshotUrl, { headers: { 'Accept': 'application/json' } });
-            if (!res.ok) return;
-            const data = await res.json();
-            await window.GreenPosOffline.saveSnapshot(data);
-            if (Array.isArray(data.payment_modes) && data.payment_modes.length) {
-                paymentModes = data.payment_modes.map((mode) => ({
-                    id: mode.id,
-                    name: mode.name,
-                    method: mode.metadata?.method || 'cash',
-                    timing: mode.metadata?.timing || 'immediate',
-                    required_fields: mode.metadata?.required_fields || [],
-                }));
-            }
-        } catch (e) {}
-    }
-
-    async function flushOffline() {
-        if (!window.GreenPosOffline || !navigator.onLine) return;
-        const count = await window.GreenPosOffline.count();
-        if (!count) {
-            setOffline(false);
-            return;
+            if ((await Offline.count()) === 0) return;
+            const data = await Offline.flush(cfg.syncUrl, cfg.csrf);
+            const res = data.results || [];
+            const ok = res.filter((r) => r.ok).length;
+            const conflicts = res.filter((r) => r.conflict).length;
+            if (ok) toast(ok + ' ticket(s) hors ligne synchronisé(s)');
+            if (conflicts) toast(conflicts + ' ticket(s) en conflit — voir « Conflits synchro »', false);
+            if (ok) fetchCatalog(el.search.value.trim());
+        } catch (e) {
+            // Session expirée ou serveur indisponible : la file est conservée.
+        } finally {
+            syncing = false;
+            refreshNetStatus();
         }
-        const result = await window.GreenPosOffline.flush(cfg.syncUrl, cfg.csrf);
-        const failed = (result.results || []).filter((row) => row && row.ok === false);
-        if (failed.length) toast(failed[0].message || 'Sync partielle', false);
-        else if ((result.results || []).length) toast('File hors ligne synchronisée');
-        setOffline(!navigator.onLine || (await window.GreenPosOffline.count()) > 0);
     }
 
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js').catch(() => {});
+    async function refreshSnapshot() {
+        if (!Offline || !navigator.onLine || !cfg.snapshotUrl) return;
+        try {
+            const res = await fetch(cfg.snapshotUrl, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+            if (res.ok) await Offline.saveSnapshot(await res.json());
+        } catch (e) { /* hors ligne */ }
     }
-    window.addEventListener('online', () => { refreshSnapshot().then(flushOffline); });
-    window.addEventListener('offline', () => setOffline(true));
+
+    window.addEventListener('online', () => { refreshNetStatus(); syncQueue(); refreshSnapshot(); });
+    window.addEventListener('offline', refreshNetStatus);
+    setInterval(syncQueue, 60000);
+    setInterval(refreshSnapshot, 600000);
 
     renderProducts(products);
     renderCart();
-    syncDelivery();
-    refreshSnapshot().then(flushOffline);
+    refreshNetStatus();
+    refreshSnapshot().then(syncQueue);
 })();
+</script>
+<script>
+// Ancien format de file (jobs {url, body}) : converti une fois dans la file IndexedDB versionnée.
+(async () => {
+    if (!window.GreenPosOffline) return;
+    try {
+        const legacy = JSON.parse(localStorage.getItem('pos-offline-queue') || '[]').filter((j) => j && j.url && j.body);
+        for (const job of legacy) {
+            await window.GreenPosOffline.enqueue(Object.assign({ client_uuid: job.body.client_uuid || window.GreenPosOffline.uuid() }, job.body));
+        }
+        if (legacy.length) {
+            const rest = JSON.parse(localStorage.getItem('pos-offline-queue') || '[]').filter((j) => !(j && j.url));
+            localStorage.setItem('pos-offline-queue', JSON.stringify(rest));
+        }
+    } catch (e) {}
+})();
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('{{ \App\Support\RimalOffline::swUrl() }}').catch(() => {});
+}
 </script>
 </body>
 </html>

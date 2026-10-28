@@ -1,3 +1,4 @@
+@include('reports._period')
 <form method="GET" action="{{ $action ?? request()->url() }}" class="mb-6 gp-card">
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
         <div>

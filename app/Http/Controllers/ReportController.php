@@ -88,7 +88,7 @@ class ReportController extends Controller
         $filters = $this->reports->parseFilters($request);
         $type = $request->string('type', 'sales')->toString();
 
-        return match ($type) {
+        $response = match ($type) {
             'sales' => $this->exportSales($company->id, $filters),
             'products' => $this->exportProducts($company->id, $filters),
             'customers' => $this->exportCustomers($company->id, $filters),
@@ -96,6 +96,31 @@ class ReportController extends Controller
             'stock' => $this->exportStock($company->id, $filters),
             default => $this->exportSales($company->id, $filters),
         };
+
+        if ($request->query('format') !== 'xls') {
+            return $response;
+        }
+
+        // Export Excel natif : même contenu que le CSV, converti en classeur .xls.
+        ob_start();
+        ($response->getCallback())();
+        $csv = ob_get_clean();
+        $lines = array_values(array_filter(preg_split('/\r\n|\n/', $csv), fn ($l) => $l !== ''));
+        $head = str_getcsv(array_shift($lines) ?? '', ';');
+        $columns = [];
+        foreach ($head as $i => $h) {
+            $columns['c'.$i] = ucfirst(str_replace('_', ' ', $h));
+        }
+        $rows = array_map(function ($l) {
+            $row = [];
+            foreach (str_getcsv($l, ';') as $i => $v) {
+                $row['c'.$i] = is_numeric($v) ? (float) $v : $v;
+            }
+
+            return $row;
+        }, $lines);
+
+        return \App\Support\RimalSpreadsheet::download('rapport-'.$type.'-'.now()->format('Ymd').'.xls', 'Rapport '.$type, $columns, $rows);
     }
 
     public function print(Request $request): View

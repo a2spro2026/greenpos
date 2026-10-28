@@ -40,7 +40,7 @@ Surveillance et protection des données — {{ $company->name }}
             <div>
                 <div class="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-teal-100/80">
                     <span class="sys-live {{ $overall === 'healthy' ? '' : 'bad' }}"></span>
-                    GreenPOS System Health
+                    {{ config('app.name') }} System Health
                 </div>
                 <h2>{{ $overallLabel }}</h2>
                 <p>Base de données, stockage, services et sauvegardes sont surveillés en continu pour protéger les données de votre entreprise.</p>

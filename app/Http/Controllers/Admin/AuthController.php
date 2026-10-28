@@ -57,13 +57,13 @@ class AuthController extends Controller
         ]);
 
         Auth::login($user, $request->boolean('remember'));
-        $request->session()->regenerate();
+        $request->session()->regenerate(true);
         SessionManager::clearAutoLoginBlock();
 
         // Never follow a stale ERP "intended" URL — console only
         $request->session()->forget('url.intended');
 
-        return redirect()->route('admin.dashboard');
+        return redirect()->intended(route('admin.dashboard'));
     }
 
     public function logout(Request $request): RedirectResponse

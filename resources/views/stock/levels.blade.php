@@ -104,7 +104,7 @@
                                     <td class="px-4 py-3">{{ $level->store?->name }}</td>
                                 @endif
                                 @if(in_array('quantity', $columns, true))
-                                    <td class="px-4 py-3 font-bold">{{ number_format($level->quantity, 3, ',', ' ') }}</td>
+                                    <td class="px-4 py-3 font-bold">{{ number_format($level->quantity, 3, ',', ' ') }}@if((float) $level->reserved_quantity > 0)<span class="mt-0.5 block text-[11px] font-semibold text-amber-600 dark:text-amber-300" title="Réservé par des commandes non livrées">dont {{ number_format($level->reserved_quantity, 3, ',', ' ') }} en sortie en cours</span>@endif</td>
                                 @endif
                                 @if(in_array('min', $columns, true))
                                     <td class="px-4 py-3">{{ number_format($level->min_quantity, 3, ',', ' ') }}</td>

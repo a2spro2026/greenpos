@@ -8,10 +8,11 @@
 @section('actions')
     <div class="flex flex-wrap gap-2">
         @can('reports.export')
-            <a href="{{ route('reports.export', array_merge(request()->only(['from','to','store_id','user_id','category_id','product_id','customer_id']), ['type' => 'sales'])) }}" class="gp-btn-secondary">Exporter CSV</a>
+            <a href="{{ route('reports.export', array_merge(request()->only(['from','to','store_id','user_id','category_id','product_id','customer_id']), ['type' => 'sales'])) }}" class="gp-btn-secondary">Export CSV</a>
+            <a href="{{ route('reports.export', array_merge(array_merge(request()->only(['from','to','store_id','user_id','category_id','product_id','customer_id']), ['type' => 'sales']), ['format' => 'xls'])) }}" class="gp-btn-secondary">Export Excel</a>
         @endcan
         @can('reports.print')
-            <a href="{{ route('reports.print', request()->only(['from','to','store_id','user_id','category_id','product_id','customer_id'])) }}" target="_blank" class="gp-btn-secondary">Imprimer</a>
+            <a href="{{ route('reports.print', request()->only(['from','to','store_id','user_id','category_id','product_id','customer_id'])) }}" target="_blank" class="gp-btn-secondary">PDF / Imprimer</a>
         @endcan
     </div>
 @endsection

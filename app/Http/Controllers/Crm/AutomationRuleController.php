@@ -22,7 +22,7 @@ class AutomationRuleController extends Controller
         $company = Workspace::company();
         $this->automation->ensureDefaultRule($company);
 
-        return view('crm.automations.index', [
+        return view('crm.automation-rules.index', [
             'rules' => AutomationRule::query()->forCompany($company->id)->orderBy('name')->get(),
             'triggers' => AutomationRule::TRIGGERS,
         ]);

@@ -12,7 +12,7 @@
             ?: ($workspaceCompany?->logoUrl());
         $sig = $brandSvc->assetUrl($brand['invoice_signature_path'] ?? null);
         $stamp = $brandSvc->assetUrl($brand['invoice_stamp_path'] ?? null);
-        $trade = $brand['trade_name'] ?? ($workspaceCompany->name ?? 'GreenPOS');
+        $trade = $brand['trade_name'] ?? ($workspaceCompany->name ?? config('app.name'));
     @endphp
     <style>
         body { font-family: ui-sans-serif, system-ui, sans-serif; color: #0f172a; margin: 32px; }

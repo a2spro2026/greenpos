@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', 'CRM')
 @section('breadcrumb', 'CRM Enterprise')
-@section('heading', 'Dashboard CRM')
+@section('heading', 'Tableau de bord CRM')
 @section('subtitle', 'Pipeline, leads et performance commerciale.')
 @section('actions')
     <a href="{{ route('crm.leads.create') }}" class="gp-btn-secondary">Nouveau lead</a>

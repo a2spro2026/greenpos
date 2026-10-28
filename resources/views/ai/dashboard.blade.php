@@ -1,12 +1,15 @@
 @extends('layouts.app')
 
-@section('title', 'GreenPOS AI')
+@section('title', 'Assistant IA')
+@section('heading', 'Assistant IA')
+@section('breadcrumb', 'Pilotage / Assistant IA')
+@section('subtitle', 'Conversations, analyses et automatisations validées.')
 
 @section('content')
 <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
         <p class="text-xs font-bold uppercase tracking-[0.18em] text-teal-600 dark:text-teal-400">Intelligence</p>
-        <h1 class="mt-1 text-2xl font-extrabold tracking-tight text-gp-text">GreenPOS AI</h1>
+        <h1 class="mt-1 text-2xl font-extrabold tracking-tight text-gp-text">Assistant IA</h1>
         <p class="mt-1 text-sm text-gp-muted">Assistant intelligent · conversations · insights · automatisations validées</p>
     </div>
     <div class="flex flex-wrap gap-2">

@@ -41,6 +41,11 @@
             <label class="gp-label">Copies ticket</label>
             <input type="number" name="print_copies" value="{{ $settings['print_copies'] }}" class="gp-input" min="0" max="5">
         </div>
+        <div>
+            <label class="gp-label">Archiver les tickets en attente après (jours)</label>
+            <input type="number" name="held_archive_days" value="{{ $settings['held_archive_days'] ?? 30 }}" class="gp-input" min="0" max="365">
+            <p class="mt-1 text-xs text-gp-muted">Les tickets enregistrés plus anciens sont masqués de « Reprendre » (jamais supprimés, visibles via le filtre « Archivés » des tickets). 0 = désactivé.</p>
+        </div>
         <div class="flex flex-col justify-end gap-3 pb-1">
             <label class="inline-flex items-center gap-2 text-sm">
                 <input type="checkbox" name="print_ticket" value="1" class="rounded border-gp-border" @checked($settings['print_ticket'])>
@@ -58,6 +63,18 @@
         <div class="sm:col-span-2">
             <label class="gp-label">Pied de ticket</label>
             <textarea name="receipt_footer" rows="2" class="gp-input">{{ $settings['receipt_footer'] }}</textarea>
+        </div>
+        <div>
+            <label class="gp-label">Position des catégories (terminal)</label>
+            <select name="categories_position" class="gp-input">
+                <option value="bottom" @selected(($settings['categories_position'] ?? 'bottom') === 'bottom')>En bas de l'écran (par défaut)</option>
+                <option value="left" @selected(($settings['categories_position'] ?? 'bottom') === 'left')>À gauche</option>
+            </select>
+        </div>
+        <div class="space-y-2 rounded-xl bg-gp-bg p-4 dark:bg-white/5 sm:col-span-2">
+            <p class="text-xs font-bold uppercase tracking-wide text-gp-muted">Plateformes de livraison</p>
+            <p class="text-xs text-gp-muted">Les plateformes (nom, commission % ou fixe) se gèrent dans une page dédiée et apparaissent dans le terminal.</p>
+            <a href="{{ route('settings.delivery-platforms.index') }}" class="gp-btn-secondary inline-flex">Gérer les plateformes de livraison</a>
         </div>
     </div>
 </article>

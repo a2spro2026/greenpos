@@ -1,0 +1,49 @@
+<?php
+
+use App\Http\Controllers\PosCashController;
+use Illuminate\Support\Facades\Route;
+
+// Rimal POS V2 — caisse, journal et règlements à encaisser.
+Route::get('/pos/journal', [PosCashController::class, 'journal'])->name('pos.journal');
+Route::get('/pos/journal/print', [PosCashController::class, 'print'])->name('pos.journal.print');
+Route::get('/pos/journal/export', [PosCashController::class, 'export'])->name('pos.journal.export');
+Route::post('/pos/cash-movements', [PosCashController::class, 'storeMovement'])->name('pos.cash-movements.store');
+Route::get('/pos/a-encaisser', [PosCashController::class, 'collections'])->name('pos.collections');
+
+// Rimal V2 — phase 4 : pilotage, rapports complémentaires, BL client, documents centraux
+Route::middleware(['auth'])->group(function () {
+    Route::get('/reports/pilotage', [\App\Http\Controllers\RimalReportController::class, 'pilotage'])->name('reports.pilotage');
+    Route::get('/reports/pilotage/export', [\App\Http\Controllers\RimalReportController::class, 'exportPilotage'])->name('reports.pilotage.export');
+    Route::get('/reports/documents', [\App\Http\Controllers\RimalReportController::class, 'documents'])->name('reports.documents');
+    Route::get('/reports/rimal/{type}', [\App\Http\Controllers\RimalReportController::class, 'show'])->whereIn('type', array_keys(\App\Services\RimalReportService::REPORTS))->name('reports.extra');
+    Route::get('/reports/rimal/{type}/export', [\App\Http\Controllers\RimalReportController::class, 'export'])->whereIn('type', array_keys(\App\Services\RimalReportService::REPORTS))->name('reports.extra.export');
+    Route::get('/reports/rimal/{type}/print', [\App\Http\Controllers\RimalReportController::class, 'print'])->whereIn('type', array_merge(['pilotage'], array_keys(\App\Services\RimalReportService::REPORTS)))->name('reports.extra.print');
+    Route::get('/sales/{sale}/bon-livraison', [\App\Http\Controllers\RimalReportController::class, 'deliveryNote'])->name('sales.delivery-note');
+});
+
+// Rimal V2 — phase 5 : conflits de synchronisation hors ligne
+Route::get('/pos/sync-conflicts', [\App\Http\Controllers\PosSyncConflictController::class, 'index'])->name('pos.sync-conflicts.index');
+Route::post('/pos/sync-conflicts/{conflict}/retry', [\App\Http\Controllers\PosSyncConflictController::class, 'retry'])->name('pos.sync-conflicts.retry');
+Route::post('/pos/sync-conflicts/{conflict}/resolve', [\App\Http\Controllers\PosSyncConflictController::class, 'resolve'])->name('pos.sync-conflicts.resolve');
+
+// Page abonnement côté entreprise (lecture seule)
+Route::get('/abonnement', [\App\Http\Controllers\SubscriptionInfoController::class, 'show'])->name('account.subscription');
+
+// Catégories produits
+Route::get('/products/categories', [\App\Http\Controllers\CategoryController::class, 'index'])->name('products.categories.index');
+Route::post('/products/categories', [\App\Http\Controllers\CategoryController::class, 'store'])->name('products.categories.store');
+Route::put('/products/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'update'])->name('products.categories.update');
+
+Route::post('/pos/tickets/{sale}/archive', [\App\Http\Controllers\PosTicketController::class, 'archive'])->whereNumber('sale')->name('pos.tickets.archive');
+
+// Rimal V2 — retours fournisseur
+Route::middleware(['auth'])->group(function () {
+    Route::get('/purchases/returns', [\App\Http\Controllers\SupplierReturnController::class, 'index'])->name('purchases.returns.index');
+    Route::get('/purchases/returns/create', [\App\Http\Controllers\SupplierReturnController::class, 'create'])->name('purchases.returns.create');
+    Route::post('/purchases/returns', [\App\Http\Controllers\SupplierReturnController::class, 'store'])->name('purchases.returns.store');
+    Route::get('/purchases/returns/{return}', [\App\Http\Controllers\SupplierReturnController::class, 'show'])->whereNumber('return')->name('purchases.returns.show');
+    Route::get('/purchases/returns/{return}/print', [\App\Http\Controllers\SupplierReturnController::class, 'print'])->whereNumber('return')->name('purchases.returns.print');
+    Route::post('/purchases/returns/{return}/validate', [\App\Http\Controllers\SupplierReturnController::class, 'validateReturn'])->whereNumber('return')->name('purchases.returns.validate');
+    Route::post('/purchases/returns/{return}/credit', [\App\Http\Controllers\SupplierReturnController::class, 'credit'])->whereNumber('return')->name('purchases.returns.credit');
+    Route::post('/purchases/returns/{return}/cancel', [\App\Http\Controllers\SupplierReturnController::class, 'cancel'])->whereNumber('return')->name('purchases.returns.cancel');
+});

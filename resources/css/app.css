@@ -358,14 +358,12 @@ html.gp-density-spacious {
         gap: 1rem;
         grid-template-columns: 1fr;
     }
+    /* Ancien bandeau KPI « collant » : il restait figé sous l'en-tête et le contenu
+       défilait derrière lui (chevauchement). Il défile désormais normalement. */
     .gp-kpi-sticky {
-        position: sticky;
-        top: var(--gp-header-height);
-        z-index: 20;
+        position: relative;
         margin-bottom: 0.25rem;
         padding: 0.65rem 0.15rem 0.85rem;
-        background: color-mix(in srgb, var(--color-gp-bg) 92%, transparent);
-        backdrop-filter: blur(12px);
     }
     @media (min-width: 640px) {
         .gp-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

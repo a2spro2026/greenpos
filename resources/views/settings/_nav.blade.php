@@ -23,7 +23,7 @@
 @endphp
 
 <aside class="settings-side shrink-0 lg:w-56">
-    <div class="gp-card !p-2 sticky top-20">
+    <div class="gp-card !p-2 lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto">
         <p class="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-gp-muted">Configuration</p>
         <nav class="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible pb-1 lg:pb-0">
             @foreach($nav as $item)

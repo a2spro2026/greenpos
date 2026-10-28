@@ -29,7 +29,7 @@ Route::put('/pos/imprimantes/{printer}', [PrinterController::class, 'update'])->
 
 Route::get('/pos/offline/snapshot', [PosController::class, 'offlineSnapshot'])->name('pos.offline.snapshot');
 Route::post('/pos/offline/sync', [PosController::class, 'offlineSync'])->name('pos.offline.sync');
-Route::get('/pos/tickets/{sale}/kitchen', [PosTicketController::class, 'kitchen'])->name('pos.tickets.kitchen');
+// pos.tickets.kitchen : défini dans routes/web.php (version en production).
 Route::get('/pos/tickets/{sale}/refund', [PosTicketController::class, 'refundForm'])->name('pos.tickets.refund');
 Route::post('/pos/tickets/{sale}/refund', [PosTicketController::class, 'refund'])->name('pos.tickets.refund.store');
 Route::post('/pos/payments/{payment}/collect', [PosTicketController::class, 'collect'])->name('pos.payments.collect');
@@ -42,14 +42,10 @@ Route::post('/sales/payments/{payment}/collect', [SaleController::class, 'collec
 Route::post('/sales/payments/{payment}/reschedule', [SaleController::class, 'reschedulePayment'])->name('sales.payments.reschedule');
 Route::post('/sales/payments/{payment}/cancel', [SaleController::class, 'cancelPayment'])->name('sales.payments.cancel');
 
-Route::get('/crm/incidents', [CrmIncidentController::class, 'index'])->name('crm.incidents.index');
-Route::get('/crm/incidents/create', [CrmIncidentController::class, 'create'])->name('crm.incidents.create');
-Route::post('/crm/incidents', [CrmIncidentController::class, 'store'])->name('crm.incidents.store');
-Route::post('/crm/incidents/assignments', [CrmIncidentController::class, 'assignType'])->name('crm.incidents.assign');
-Route::get('/crm/incidents/{incident}', [CrmIncidentController::class, 'show'])->name('crm.incidents.show');
-Route::put('/crm/incidents/{incident}', [CrmIncidentController::class, 'update'])->name('crm.incidents.update');
+// Incidents CRM : la version en production (routes/crm.php, IncidentController) est conservée.
+// CrmIncidentController (main) n'est pas routé : schéma crm_incidents différent.
 
-Route::get('/crm/automations', [AutomationRuleController::class, 'index'])->name('crm.automations.index');
-Route::post('/crm/automations', [AutomationRuleController::class, 'store'])->name('crm.automations.store');
-Route::post('/crm/automations/run', [AutomationRuleController::class, 'run'])->name('crm.automations.run');
-Route::put('/crm/automations/{rule}', [AutomationRuleController::class, 'update'])->name('crm.automations.update');
+Route::get('/crm/regles-automatisation', [AutomationRuleController::class, 'index'])->name('crm.automation-rules.index');
+Route::post('/crm/regles-automatisation', [AutomationRuleController::class, 'store'])->name('crm.automation-rules.store');
+Route::post('/crm/regles-automatisation/run', [AutomationRuleController::class, 'run'])->name('crm.automation-rules.run');
+Route::put('/crm/regles-automatisation/{rule}', [AutomationRuleController::class, 'update'])->name('crm.automation-rules.update');

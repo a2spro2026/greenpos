@@ -55,6 +55,10 @@ class SaleService
                 'currency' => $data['currency'] ?? ($company->currency ?? 'MAD'),
                 'sold_at' => $data['sold_at'] ?? now()->toDateString(),
                 'notes' => $data['notes'] ?? null,
+                'expected_delivery_at' => $data['expected_delivery_at'] ?? null,
+                'delivery_agent_id' => $data['delivery_agent_id'] ?? null,
+                'delivery_address' => $data['delivery_address'] ?? null,
+                'contact_phone' => $data['contact_phone'] ?? null,
                 'subtotal_ht' => $computed['subtotal_ht'],
                 'tax_total' => $computed['tax_total'],
                 'discount_total' => $computed['discount_total'],
@@ -108,6 +112,10 @@ class SaleService
                 'currency' => $data['currency'] ?? $sale->currency,
                 'sold_at' => $data['sold_at'] ?? $sale->sold_at,
                 'notes' => $data['notes'] ?? null,
+                'expected_delivery_at' => $data['expected_delivery_at'] ?? null,
+                'delivery_agent_id' => $data['delivery_agent_id'] ?? null,
+                'delivery_address' => $data['delivery_address'] ?? null,
+                'contact_phone' => $data['contact_phone'] ?? null,
                 'subtotal_ht' => $computed['subtotal_ht'],
                 'tax_total' => $computed['tax_total'],
                 'discount_total' => $computed['discount_total'],
@@ -151,15 +159,8 @@ class SaleService
             foreach ($sale->lines as $line) {
                 $product = Product::query()->find($line->product_id);
                 if ($product?->track_stock) {
-                    $this->stock->applyMovement([
-                        'store_id' => $sale->store_id,
-                        'product_id' => $product->id,
-                        'type' => 'out',
-                        'quantity' => $line->quantity,
-                        'reference' => $sale->number,
-                        'comment' => 'Vente '.$sale->number,
-                        'moved_at' => now(),
-                    ]);
+                    // Rimal V2 : le stock passe en « Sortie en cours » jusqu'à la livraison.
+                    $this->stock->reserve((int) $sale->store_id, (int) $product->id, (float) $line->quantity);
                 }
             }
 
@@ -173,11 +174,12 @@ class SaleService
 
             $sale->update([
                 'status' => 'confirmed',
+                'stock_state' => 'reserved',
                 'confirmed_at' => now(),
                 'updated_by' => Workspace::user()?->id,
             ]);
 
-            $this->log($sale, 'confirmed', 'Vente confirmée — stock décrémenté.');
+            $this->log($sale, 'confirmed', 'Commande confirmée — stock en « Sortie en cours ».');
 
             return $sale;
         });
@@ -195,14 +197,43 @@ class SaleService
             throw ValidationException::withMessages(['status' => 'Transition impossible.']);
         }
 
-        $sale->update([
-            'status' => $target,
-            $target.'_at' => now(),
-            'updated_by' => Workspace::user()?->id,
-        ]);
-        $this->log($sale, $target, 'Statut avancé vers '.Sale::STATUSES[$target].'.');
+        return DB::transaction(function () use ($sale, $target) {
+            if (in_array($target, ['delivered', 'completed'], true) && $sale->stock_state === 'reserved') {
+                // Livraison totale uniquement (pas de livraison partielle) : toute la réservation sort.
+                $this->shipReservedStock($sale);
+            }
 
-        return $sale;
+            $sale->update([
+                'status' => $target,
+                $target.'_at' => now(),
+                'updated_by' => Workspace::user()?->id,
+            ]);
+            $this->log($sale, $target, 'Statut avancé vers '.Sale::STATUSES[$target].'.');
+
+            return $sale;
+        });
+    }
+
+    protected function shipReservedStock(Sale $sale): void
+    {
+        $sale->load('lines');
+        foreach ($sale->lines as $line) {
+            $product = Product::query()->find($line->product_id);
+            if (! $product?->track_stock) {
+                continue;
+            }
+            $this->stock->releaseReservation((int) $sale->store_id, (int) $product->id, (float) $line->quantity);
+            $this->stock->applyMovement([
+                'store_id' => $sale->store_id,
+                'product_id' => $product->id,
+                'type' => 'out',
+                'quantity' => $line->quantity,
+                'reference' => $sale->number,
+                'comment' => 'Livraison commande '.$sale->number,
+                'moved_at' => now(),
+            ]);
+        }
+        $sale->update(['stock_state' => 'out', 'delivered_at' => $sale->delivered_at ?? now()]);
     }
 
     public function cancel(Sale $sale): Sale
@@ -212,7 +243,15 @@ class SaleService
         }
 
         return DB::transaction(function () use ($sale) {
-            if (in_array($sale->status, ['confirmed', 'preparing', 'delivered', 'completed'], true)) {
+            if ($sale->stock_state === 'reserved') {
+                $sale->load('lines');
+                foreach ($sale->lines as $line) {
+                    $product = Product::query()->find($line->product_id);
+                    if ($product?->track_stock) {
+                        $this->stock->releaseReservation((int) $sale->store_id, (int) $product->id, (float) $line->quantity);
+                    }
+                }
+            } elseif (in_array($sale->status, ['confirmed', 'preparing', 'delivered', 'completed'], true)) {
                 $sale->load('lines');
                 foreach ($sale->lines as $line) {
                     $product = Product::query()->find($line->product_id);
@@ -245,6 +284,9 @@ class SaleService
     {
         if (! in_array($sale->status, ['confirmed', 'delivered', 'completed'], true)) {
             throw ValidationException::withMessages(['status' => 'Retour impossible pour ce statut.']);
+        }
+        if ($sale->stock_state === 'reserved') {
+            throw ValidationException::withMessages(['status' => 'Commande non livrée : annulez-la plutôt que de faire un retour.']);
         }
 
         $sale->load('lines');

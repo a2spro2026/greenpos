@@ -3,7 +3,7 @@
 @section('content')
 <section class="ob-hero">
     <div class="ob-hero-copy">
-        <p class="ob-eyebrow">GreenPOS Enterprise</p>
+        <p class="ob-eyebrow">{{ config('app.name') }} Enterprise</p>
         <h1>Votre commerce, opérationnel en moins de 2 minutes.</h1>
         <p class="ob-lead">Caisse, stock, facturation, CRM et rapports — un espace SaaS prêt à l’emploi, sans installation.</p>
         <div class="ob-hero-cta">
@@ -33,7 +33,7 @@
             ['Stock & achats', 'Niveaux, alertes, réceptions et valorisation.'],
             ['Facturation', 'Devis, factures, paiements et suivi client.'],
             ['CRM Enterprise', 'Leads, pipeline et activités commerciales.'],
-            ['GreenPOS AI', 'Assistance contextuelle sur vos modules métier.'],
+            ['Assistant IA', 'Assistance contextuelle sur vos modules métier.'],
             ['Multi-boutiques', 'Entreprises, magasins et rôles isolés.'],
         ] as [$t, $d])
             <article class="ob-feature">

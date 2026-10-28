@@ -8,18 +8,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CrmIncident extends Model
 {
-    public const TYPES = [
-        'complaint' => 'Réclamation',
-        'delay' => 'Retard',
-        'quality' => 'Qualité',
-        'payment' => 'Paiement',
-        'other' => 'Autre',
-    ];
-
     public const PRIORITIES = [
         'low' => 'Basse',
-        'normal' => 'Normale',
-        'high' => 'Haute',
+        'medium' => 'Moyenne',
         'urgent' => 'Urgente',
     ];
 
@@ -27,17 +18,20 @@ class CrmIncident extends Model
         'open' => 'Ouvert',
         'in_progress' => 'En cours',
         'resolved' => 'Résolu',
-        'closed' => 'Clôturé',
+        'cancelled' => 'Annulé',
     ];
 
     protected $fillable = [
-        'company_id', 'store_id', 'customer_id', 'assignee_user_id', 'reported_by',
-        'number', 'type', 'priority', 'status', 'subject', 'body', 'resolved_at',
+        'company_id', 'store_id', 'employee_id', 'type', 'priority', 'status',
+        'title', 'description', 'assigned_to', 'auto_assigned', 'resolved_at', 'created_by',
     ];
 
     protected function casts(): array
     {
-        return ['resolved_at' => 'datetime'];
+        return [
+            'auto_assigned' => 'boolean',
+            'resolved_at' => 'datetime',
+        ];
     }
 
     public function company(): BelongsTo
@@ -45,43 +39,23 @@ class CrmIncident extends Model
         return $this->belongsTo(Company::class);
     }
 
-    public function store(): BelongsTo
-    {
-        return $this->belongsTo(Store::class);
-    }
-
-    public function customer(): BelongsTo
-    {
-        return $this->belongsTo(Customer::class);
-    }
-
     public function assignee(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'assignee_user_id');
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 
-    public function reporter(): BelongsTo
+    public function employee(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'reported_by');
+        return $this->belongsTo(Employee::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function scopeForCompany(Builder $query, int $companyId): Builder
     {
         return $query->where('company_id', $companyId);
-    }
-
-    public function typeLabel(): string
-    {
-        return self::TYPES[$this->type] ?? $this->type;
-    }
-
-    public function statusLabel(): string
-    {
-        return self::STATUSES[$this->status] ?? $this->status;
-    }
-
-    public function priorityLabel(): string
-    {
-        return self::PRIORITIES[$this->priority] ?? $this->priority;
     }
 }

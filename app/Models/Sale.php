@@ -13,6 +13,7 @@ class Sale extends Model
         'manual' => 'Manuel',
         'pos' => 'POS',
         'quote' => 'Devis',
+        'ecommerce' => 'E-commerce',
     ];
 
     public const STATUSES = [
@@ -35,11 +36,19 @@ class Sale extends Model
         'returned' => 'bg-orange-100 text-orange-800 dark:bg-orange-500/20 dark:text-orange-200',
     ];
 
+    public const SERVICE_MODES = [
+        'dine_in' => 'Sur place',
+        'takeaway' => 'À emporter',
+        'delivery' => 'Livraison',
+    ];
+
     protected $fillable = [
         'company_id', 'store_id', 'customer_id', 'salesperson_id',
+        'employee_id', 'delivery_agent_id',
         'created_by', 'updated_by', 'pos_sale_id', 'quote_id', 'invoice_id',
-        'number', 'origin', 'status', 'payment_status_code', 'reference', 'ticket_name', 'ticket_group', 'service_mode', 'currency',
-        'sold_at', 'appointment_at', 'pickup_date', 'notes', 'delivery_address',
+        'number', 'origin', 'service_mode', 'status', 'payment_status_code', 'reference', 'currency',
+        'sold_at', 'appointment_at', 'pickup_date', 'notes', 'delivery_address', 'ticket_name', 'ticket_group', 'delivery_commission',
+        'expected_delivery_at', 'stock_state', 'contact_phone',
         'subtotal_ht', 'tax_total', 'discount_total', 'total_ttc',
         'amount_paid', 'amount_returned',
         'confirmed_at', 'delivered_at', 'completed_at', 'cancelled_at',
@@ -49,12 +58,14 @@ class Sale extends Model
     {
         return [
             'sold_at' => 'date',
+            'expected_delivery_at' => 'date',
             'subtotal_ht' => 'decimal:2',
             'tax_total' => 'decimal:2',
             'discount_total' => 'decimal:2',
             'total_ttc' => 'decimal:2',
             'amount_paid' => 'decimal:2',
             'amount_returned' => 'decimal:2',
+            'delivery_commission' => 'decimal:2',
             'confirmed_at' => 'datetime',
             'delivered_at' => 'datetime',
             'completed_at' => 'datetime',
@@ -69,6 +80,7 @@ class Sale extends Model
     public function customer(): BelongsTo { return $this->belongsTo(Customer::class); }
     public function salesperson(): BelongsTo { return $this->belongsTo(User::class, 'salesperson_id'); }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
+    public function deliveryAgent(): BelongsTo { return $this->belongsTo(DeliveryAgent::class, 'delivery_agent_id'); }
     public function posSale(): BelongsTo { return $this->belongsTo(PosSale::class, 'pos_sale_id'); }
     public function quote(): BelongsTo { return $this->belongsTo(Quote::class); }
     public function invoice(): BelongsTo { return $this->belongsTo(Invoice::class); }
@@ -94,6 +106,16 @@ class Sale extends Model
     public function statusLabel(): string { return self::STATUSES[$this->status] ?? $this->status; }
     public function statusColor(): string { return self::STATUS_COLORS[$this->status] ?? 'bg-slate-100 text-slate-700'; }
     public function originLabel(): string { return self::ORIGINS[$this->origin] ?? $this->origin; }
+    public function serviceModeLabel(): string { return self::SERVICE_MODES[$this->service_mode] ?? ($this->service_mode ?: '—'); }
+
+    public function stockStateLabel(): ?string
+    {
+        return match ($this->stock_state) {
+            'reserved' => 'Sortie en cours',
+            'out' => 'Sorti (livré)',
+            default => $this->status === 'draft' ? 'Non réservé (brouillon)' : null,
+        };
+    }
 
     public function balanceDue(): float
     {

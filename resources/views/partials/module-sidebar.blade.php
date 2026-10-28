@@ -8,7 +8,9 @@
         'pos' => 'M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z',
         'sales' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2',
         'products' => 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4',
+        'categories' => 'M4 6h16M4 12h16M4 18h10',
         'stock' => 'M4 7h16M4 12h16M4 17h10',
+        'inventory' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2',
         'purchases' => 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 9m12-9l2 9',
         'suppliers' => 'M17 20h5v-2a4 4 0 00-4-4h-1M9 20H4v-2a4 4 0 014-4h1m4-4a4 4 0 11-8 0 4 4 0 018 0z',
         'customers' => 'M17 20h5v-2a4 4 0 00-4-4h-1M9 20H4v-2a4 4 0 014-4h1m4-4a4 4 0 11-8 0 4 4 0 018 0z',
@@ -17,6 +19,7 @@
         'payments' => 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6',
         'invoices' => 'M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v14l-4-2-4 2-4-2-4 2V6a2 2 0 012-2z',
         'quotes' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2',
+        'accounting' => 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
         'companies' => 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5',
         'stores' => 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5',
         'users' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1z',
@@ -28,29 +31,53 @@
         'branding' => 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01',
     ];
     $groupMeta = [
+        'Point de vente' => [
+            'tone' => 'lime',
+            'icon' => 'M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z',
+        ],
         'Pilotage' => [
             'tone' => 'teal',
             'icon' => 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
-        ],
-        'Ventes' => [
-            'tone' => 'lime',
-            'icon' => 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 9m12-9l2 9',
         ],
         'Catalogue' => [
             'tone' => 'cyan',
             'icon' => 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4M4 7v10l8 4',
         ],
-        'Relation Client' => [
+        'Stock' => [
+            'tone' => 'emerald',
+            'icon' => 'M4 7h16M4 12h16M4 17h10',
+        ],
+        'Ventes & Clients' => [
             'tone' => 'sky',
-            'icon' => 'M17 20h5v-2a4 4 0 00-4-4h-1M9 20H4v-2a4 4 0 014-4h1m4-4a4 4 0 11-8 0 4 4 0 018 0z',
+            'icon' => 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 9m12-9l2 9',
+        ],
+        'Achats & Fournisseurs' => [
+            'tone' => 'orange',
+            'icon' => 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4',
+        ],
+        'Production' => [
+            'tone' => 'slate',
+            'icon' => 'M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z',
         ],
         'Finance' => [
             'tone' => 'amber',
             'icon' => 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
         ],
-        'Administration' => [
+        'Organisation & CRM' => [
             'tone' => 'violet',
+            'icon' => 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+        ],
+        'Équipe' => [
+            'tone' => 'indigo',
+            'icon' => 'M17 20h5v-2a4 4 0 00-4-4h-1M9 20H4v-2a4 4 0 014-4h1m4-4a4 4 0 11-8 0 4 4 0 018 0z',
+        ],
+        'Paramètres' => [
+            'tone' => 'zinc',
             'icon' => 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
+        ],
+        'Assistance' => [
+            'tone' => 'rose',
+            'icon' => 'M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z',
         ],
     ];
 @endphp
@@ -68,8 +95,30 @@
         </div>
         @foreach($group['items'] as $item)
             @php
-                $href = route($item['route']);
-                $active = request()->routeIs($item['route_is']);
+                $params = $item['params'] ?? [];
+                $query = $item['query'] ?? [];
+                $href = route($item['route'], $params);
+                if ($query !== []) {
+                    $href .= (str_contains($href, '?') ? '&' : '?').http_build_query($query);
+                }
+                $routeIs = $item['route_is'];
+                $active = request()->routeIs($routeIs);
+                if ($active && $params !== []) {
+                    foreach ($params as $key => $value) {
+                        if ((string) request()->route($key) !== (string) $value) {
+                            $active = false;
+                            break;
+                        }
+                    }
+                }
+                if ($active && $query !== []) {
+                    foreach ($query as $key => $value) {
+                        if ((string) request()->query($key) !== (string) $value) {
+                            $active = false;
+                            break;
+                        }
+                    }
+                }
                 $path = $icons[$item['icon']] ?? $icons['modules'];
             @endphp
             <a href="{{ $href }}" class="gp-nav-link {{ $active ? 'gp-nav-link-active' : '' }}" data-nav-item data-nav-label="{{ $item['label'] }}" data-nav-href="{{ $href }}">

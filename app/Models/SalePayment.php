@@ -10,16 +10,19 @@ class SalePayment extends Model
     public const METHODS = [
         'cash' => 'Espèces',
         'card' => 'Carte bancaire',
-        'bank_transfer' => 'Virement',
+        'instant_transfer' => 'Virement instantané',
+        'bank_transfer' => 'Virement simple',
         'mobile' => 'Paiement mobile',
         'check' => 'Chèque',
+        'effet' => 'Effet',
         'credit' => 'Crédit',
         'other' => 'Autre',
     ];
 
     protected $fillable = [
         'sale_id', 'created_by', 'method', 'amount', 'paid_at', 'reference', 'notes',
-        'custom_list_id', 'is_deferred', 'transfer_mode', 'transaction_number', 'piece_number',
+        'status', 'is_deferred', 'due_at', 'collected_at', 'collection_notes',
+        'custom_list_id', 'transfer_mode', 'transaction_number', 'piece_number',
         'bank_name', 'issue_date', 'due_date', 'confirmed_at', 'collection_status',
         'received_amount', 'change_amount', 'scheduled_for',
     ];
@@ -29,6 +32,8 @@ class SalePayment extends Model
         return [
             'amount' => 'decimal:2',
             'paid_at' => 'date',
+            'due_at' => 'datetime',
+            'collected_at' => 'datetime',
             'is_deferred' => 'boolean',
             'issue_date' => 'date',
             'due_date' => 'date',

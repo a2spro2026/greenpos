@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Connexion — {{ ($loginBranding['trade_name'] ?? null) ?: 'GreenPOS' }}</title>
+    <title>Connexion — {{ ($loginBranding['trade_name'] ?? null) ?: config('app.name') }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
@@ -36,7 +36,7 @@
 @php
     $showOther = ($mode ?? 'default') === 'other' || request('mode') === 'other';
     $hasLast = !empty($lastAccount) && !$showOther;
-    $brandName = $loginBranding['trade_name'] ?? 'GreenPOS';
+    $brandName = $loginBranding['trade_name'] ?? config('app.name');
     $btnColor = $loginBranding['button_color'] ?? null;
 @endphp
 
@@ -65,7 +65,7 @@
                         'ERP modulaire',
                         'Tableau de bord intelligent',
                         'Sauvegardes automatiques',
-                        'GreenPOS AI',
+                        'Assistant IA',
                     ] as $feat)
                         <div class="gp-auth-feature">
                             <span class="gp-auth-feature-check" aria-hidden="true">
@@ -267,7 +267,7 @@
         </div>
 
         <footer class="gp-auth-footer">
-            <span class="gp-auth-footer-version">GreenPOS v1.0</span>
+            <span class="gp-auth-footer-version">{{ config('app.name') }} v1.0</span>
             <nav class="gp-auth-footer-nav" aria-label="Liens légaux">
                 <a href="{{ route('site.contact') }}">Conditions</a>
                 <a href="{{ route('site.contact') }}">Confidentialité</a>

@@ -1,7 +1,7 @@
 @extends('layouts.site')
 
 @section('title', 'Suivi de ma demande')
-@section('meta_description', 'Suivez l’état de votre demande d’inscription GreenPOS avec votre numéro de référence.')
+@section('meta_description', 'Suivez l’état de votre demande d’inscription '.config('app.name').' avec votre numéro de référence.')
 
 @section('content')
 <section class="site-page-hero">
@@ -87,7 +87,7 @@
                     @if($item->status === 'ACTIVE')
                         <a href="{{ route('login') }}" class="site-btn site-btn-accent">Se connecter à mon espace</a>
                     @elseif($item->status === 'REFUSEE' || $item->status === 'SUSPENDUE')
-                        <a href="{{ route('site.contact') }}" class="site-btn site-btn-primary">Contacter GreenPOS</a>
+                        <a href="{{ route('site.contact') }}" class="site-btn site-btn-primary">Contacter {{ config('app.name') }}</a>
                     @else
                         <a href="{{ route('site.home') }}" class="site-btn site-btn-ghost">Retour au site</a>
                     @endif

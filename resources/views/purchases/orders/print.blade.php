@@ -23,7 +23,7 @@
         <a href="{{ route('purchases.orders.show', $order) }}">Retour</a>
     </div>
     <h1>Bon de commande {{ $order->number }}</h1>
-    <p class="muted">{{ $workspaceCompany->name ?? 'GreenPOS' }} · {{ optional($order->ordered_at)->format('d/m/Y') }} · {{ $order->statusLabel() }}</p>
+    <p class="muted">{{ $workspaceCompany->name ?? config('app.name') }} · {{ optional($order->ordered_at)->format('d/m/Y') }} · {{ $order->statusLabel() }}</p>
     <p><strong>Fournisseur :</strong> {{ $order->supplier?->name }}<br>
        <strong>Boutique :</strong> {{ $order->store?->name }}<br>
        <strong>Référence :</strong> {{ $order->reference ?: '—' }}</p>

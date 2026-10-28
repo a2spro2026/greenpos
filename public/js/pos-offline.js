@@ -142,19 +142,13 @@
                 'X-Requested-With': 'XMLHttpRequest',
             },
             body: JSON.stringify({
-                sales: sales.map((sale) => ({
-                    client_uuid: sale.client_uuid,
-                    items: sale.items,
-                    payments: sale.payments,
-                    customer_id: sale.customer_id,
-                    notes: sale.notes,
-                    service_mode_list_id: sale.service_mode_list_id,
-                    ticket_name: sale.ticket_name,
-                    ticket_group: sale.ticket_group,
-                    predefined_ticket_id: sale.predefined_ticket_id,
-                    delivery_platform_id: sale.delivery_platform_id,
-                    delivery_address: sale.delivery_address,
-                })),
+                sales: sales.slice(0, 50).map((sale) => {
+                    const row = Object.assign({}, sale);
+                    delete row.queued_at;
+                    delete row.held_sale_id;
+                    row.offline_at = row.offline_at || sale.queued_at;
+                    return row;
+                }),
             }),
         });
         const data = await res.json().catch(() => ({ results: [] }));
@@ -162,10 +156,24 @@
             throw new Error(data.message || 'Synchronisation impossible');
         }
         for (const result of data.results || []) {
-            if (result.ok) await remove(result.client_uuid);
+            // ok = enregistré (ou déjà reçu) ; conflict = consigné côté serveur (écran Conflits de synchro).
+            if (result.ok || result.conflict) await remove(result.client_uuid);
         }
         return data;
     }
 
-    window.GreenPosOffline = { products, saveSnapshot, enqueue, pending, count, flush, remove };
+    function uuid() {
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+        const b = new Uint8Array(16);
+        (window.crypto || {}).getRandomValues ? crypto.getRandomValues(b) : b.forEach((_, i) => { b[i] = Math.floor(Math.random() * 256); });
+        b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+        const h = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+        return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+    }
+
+    async function snapshot() {
+        return idbGet('catalog', 'current');
+    }
+
+    window.GreenPosOffline = { products, saveSnapshot, snapshot, enqueue, pending, count, flush, remove, uuid };
 })();

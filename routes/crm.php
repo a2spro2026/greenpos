@@ -3,7 +3,7 @@
 use App\Http\Controllers\Crm\CrmController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['web', 'workspace', 'audit'])->prefix('crm')->name('crm.')->group(function () {
+Route::middleware(['web', 'auth', 'workspace', 'session.active', 'audit'])->prefix('crm')->name('crm.')->group(function () {
     Route::get('/', [CrmController::class, 'dashboard'])->name('dashboard');
     Route::get('/pipeline', [CrmController::class, 'pipeline'])->name('pipeline');
     Route::post('/opportunities/{opportunity}/move', [CrmController::class, 'move'])->name('opportunities.move');
@@ -37,6 +37,17 @@ Route::middleware(['web', 'workspace', 'audit'])->prefix('crm')->name('crm.')->g
     Route::post('/emails', [CrmController::class, 'emailsStore'])->name('emails.store');
     Route::get('/reports', [CrmController::class, 'reports'])->name('reports');
     Route::post('/ai', [CrmController::class, 'aiAssist'])->name('ai');
+
+    Route::get('/automations', [\App\Http\Controllers\Crm\AutomationController::class, 'index'])->name('automations.index');
+    Route::get('/automations/create', [\App\Http\Controllers\Crm\AutomationController::class, 'create'])->name('automations.create');
+    Route::post('/automations', [\App\Http\Controllers\Crm\AutomationController::class, 'store'])->name('automations.store');
+    Route::post('/automations/{automation}/run', [\App\Http\Controllers\Crm\AutomationController::class, 'run'])->name('automations.run');
+    Route::delete('/automations/{automation}', [\App\Http\Controllers\Crm\AutomationController::class, 'destroy'])->name('automations.destroy');
+
+    Route::get('/incidents', [\App\Http\Controllers\Crm\IncidentController::class, 'index'])->name('incidents.index');
+    Route::get('/incidents/create', [\App\Http\Controllers\Crm\IncidentController::class, 'create'])->name('incidents.create');
+    Route::post('/incidents', [\App\Http\Controllers\Crm\IncidentController::class, 'store'])->name('incidents.store');
+    Route::post('/incidents/{incident}/status', [\App\Http\Controllers\Crm\IncidentController::class, 'updateStatus'])->name('incidents.status');
 });
 
 Route::get('/crm/email/track/{token}.gif', [CrmController::class, 'emailTrack'])->name('crm.emails.track');

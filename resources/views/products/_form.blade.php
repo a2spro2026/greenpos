@@ -39,6 +39,32 @@
                         @endforeach
                     </select>
                 </div>
+                <div class="flex flex-wrap items-center gap-4 sm:col-span-2">
+                    <label class="inline-flex items-center gap-2 text-sm font-semibold">
+                        <input type="checkbox" name="is_favorite" value="1" @checked(old('is_favorite', $product->is_favorite ?? false))>
+                        Favori POS
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-sm font-semibold">
+                        <input type="checkbox" name="is_on_sale" value="1" @checked(old('is_on_sale', $product->is_on_sale ?? false))>
+                        En promo
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-sm font-semibold">
+                        <input type="hidden" name="is_taxable" value="0">
+                        <input type="checkbox" name="is_taxable" value="1" @checked(old('is_taxable', $product->is_taxable ?? true))>
+                        Taxable
+                    </label>
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-xs font-semibold text-gp-muted">Type de prix</label>
+                    <select name="price_type" class="w-full rounded-xl border border-gp-border bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-[#0f1614]">
+                        <option value="fixed" @selected(old('price_type', $product->price_type ?? 'fixed') === 'fixed')>Fixe</option>
+                        <option value="variable" @selected(old('price_type', $product->price_type ?? 'fixed') === 'variable')>Variable</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-xs font-semibold text-gp-muted">Couleur / tag</label>
+                    <input type="text" name="color_tag" value="{{ old('color_tag', $product->color_tag ?? '') }}" maxlength="32" class="w-full rounded-xl border border-gp-border bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-[#0f1614]">
+                </div>
                 <div class="sm:col-span-2">
                     <label class="mb-1.5 block text-xs font-semibold text-gp-muted">Description courte</label>
                     <input type="text" name="short_description" value="{{ old('short_description', $product->short_description ?? '') }}" class="w-full rounded-xl border border-gp-border bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-[#0f1614]">

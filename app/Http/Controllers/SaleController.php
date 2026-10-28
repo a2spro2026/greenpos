@@ -9,7 +9,7 @@ use App\Models\Sale;
 use App\Models\SalePayment;
 use App\Models\Store;
 use App\Models\User;
-use App\Services\CollectionService;
+use App\Services\DeferredPaymentService;
 use App\Services\CustomListService;
 use App\Services\SaleRefundService;
 use App\Services\SaleService;
@@ -141,11 +141,34 @@ class SaleController extends Controller
     {
         $this->authorize('sales.create');
         $data = $this->validatedSale($request);
-        $sale = $this->sales->create($data, $request->input('lines', []));
+        $advance = $request->validate([
+            'advance_amount' => ['nullable', 'numeric', 'min:0'],
+            'advance_method' => ['nullable', 'string', 'max:64'],
+            'advance_reference' => ['nullable', 'string', 'max:120', 'required_if:advance_method,cheque,effet'],
+            'advance_due_date' => ['nullable', 'date', 'required_if:advance_method,cheque,effet'],
+        ]);
+        $sale = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $request, $advance) {
+            $sale = $this->sales->create($data, $request->input('lines', []));
+            if ($request->boolean('confirm')) {
+                $this->sales->confirm($sale);
+            }
+            $amount = (float) ($advance['advance_amount'] ?? 0);
+            if ($amount > 0) {
+                if ($amount - (float) $sale->fresh()->total_ttc > 0.009) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['advance_amount' => "L'avance dépasse le total de la commande."]);
+                }
+                $this->sales->recordPayment($sale->fresh(), [
+                    'method' => $advance['advance_method'] ?? 'cash',
+                    'amount' => $amount,
+                    'paid_at' => now()->toDateString(),
+                    'reference' => $advance['advance_reference'] ?? null,
+                    'due_date' => $advance['advance_due_date'] ?? null,
+                    'notes' => 'Avance à la commande',
+                ]);
+            }
 
-        if ($request->boolean('confirm')) {
-            $this->sales->confirm($sale);
-        }
+            return $sale;
+        });
 
         return redirect()->route('sales.show', $sale)->with('success', $request->boolean('confirm') ? 'Vente confirmée.' : 'Brouillon enregistré.');
     }
@@ -314,8 +337,12 @@ class SaleController extends Controller
     {
         $company = Workspace::company();
         $data = $request->validate([
-            'customer_id' => ['nullable', 'exists:customers,id'],
+            'customer_id' => ['required', 'exists:customers,id'],
             'store_id' => ['required', 'exists:stores,id'],
+            'expected_delivery_at' => ['nullable', 'date'],
+            'delivery_agent_id' => ['nullable', 'exists:delivery_agents,id'],
+            'delivery_address' => ['nullable', 'string', 'max:500'],
+            'contact_phone' => ['nullable', 'string', 'max:40'],
             'salesperson_id' => ['nullable', 'exists:users,id'],
             'reference' => ['nullable', 'string', 'max:120'],
             'currency' => ['nullable', 'string', 'max:8'],
@@ -329,6 +356,10 @@ class SaleController extends Controller
             'lines.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
         Store::query()->whereKey($data['store_id'])->where('company_id', $company->id)->firstOrFail();
+        Customer::query()->forCompany($company->id)->whereKey($data['customer_id'])->firstOrFail();
+        if (! empty($data['delivery_agent_id'])) {
+            \App\Models\DeliveryAgent::query()->forCompany($company->id)->whereKey($data['delivery_agent_id'])->firstOrFail();
+        }
         return $data;
     }
 
@@ -341,6 +372,7 @@ class SaleController extends Controller
             'products' => Product::query()->forCompany($company->id)->where('status', 'active')->orderBy('name')->get(['id', 'name', 'sku', 'sale_price', 'tax_rate']),
             'salespeople' => User::query()->whereHas('companies', fn ($q) => $q->where('companies.id', $company->id))->orderBy('name')->get(['id', 'name']),
             'currency' => $company->currency ?? 'MAD',
+            'deliveryAgents' => \App\Models\DeliveryAgent::query()->forCompany($company->id)->where('is_active', true)->orderBy('name')->get(['id', 'name']),
         ];
     }
 
@@ -373,7 +405,7 @@ class SaleController extends Controller
         return redirect()->route('sales.show', ['sale' => $sale, 'tab' => 'returns'])->with('success', 'Remboursement enregistré.');
     }
 
-    public function collectPayment(SalePayment $payment, CollectionService $collections): RedirectResponse
+    public function collectPayment(SalePayment $payment, DeferredPaymentService $collections): RedirectResponse
     {
         $this->authorize('payments.collect');
         $this->ensurePayment($payment);
@@ -382,7 +414,7 @@ class SaleController extends Controller
         return back()->with('success', 'Paiement encaissé.');
     }
 
-    public function reschedulePayment(Request $request, SalePayment $payment, CollectionService $collections): RedirectResponse
+    public function reschedulePayment(Request $request, SalePayment $payment, DeferredPaymentService $collections): RedirectResponse
     {
         $this->authorize('payments.collect');
         $this->ensurePayment($payment);
@@ -392,7 +424,7 @@ class SaleController extends Controller
         return back()->with('success', 'Échéance mise à jour.');
     }
 
-    public function cancelPayment(SalePayment $payment, CollectionService $collections): RedirectResponse
+    public function cancelPayment(SalePayment $payment, DeferredPaymentService $collections): RedirectResponse
     {
         $this->authorize('payments.collect');
         $this->ensurePayment($payment);

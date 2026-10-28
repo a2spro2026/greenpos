@@ -42,30 +42,41 @@
         <h1 class="text-xl font-bold text-zinc-900 dark:text-white">Connexion plateforme</h1>
         <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Espace réservé au propriétaire de GreenPOS. Séparé de l’ERP client.</p>
 
-        @if(session('status'))
+        @if(session('session_expired'))
+            <div class="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">{{ session('status') ?: 'Votre session a expiré. Veuillez vous reconnecter.' }}</div>
+        @elseif(session('status'))
             <div class="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">{{ session('status') }}</div>
         @endif
         @if($errors->any())
             <div class="mt-4 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">{{ $errors->first() }}</div>
         @endif
 
-        <form method="POST" action="{{ route('admin.login.attempt') }}" class="mt-6 space-y-4">
+        <form method="POST" action="{{ url('/admin/login') }}" class="mt-6 space-y-4" id="pa-login-form">
             @csrf
             <div>
                 <label class="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500">Identifiant</label>
-                <input type="text" name="email" value="{{ old('email', \App\Services\PlatformBootstrapService::SUPER_ADMIN_USERNAME) }}" required autofocus autocomplete="username" class="pa-input" placeholder="bilal">
+                <input type="text" name="email" id="pa-login-email" value="{{ old('email', \App\Services\PlatformBootstrapService::SUPER_ADMIN_USERNAME) }}" required autofocus autocomplete="username" class="pa-input" placeholder="bilal">
             </div>
             <div>
                 <label class="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500">Mot de passe</label>
-                <input type="password" name="password" value="{{ \App\Services\PlatformBootstrapService::SUPER_ADMIN_PASSWORD }}" required class="pa-input" placeholder="0661755048" autocomplete="current-password">
+                <input type="password" name="password" id="pa-login-password" required class="pa-input" placeholder="Mot de passe" autocomplete="current-password">
+                <p class="mt-1.5 text-xs text-zinc-500">Astuce : <span class="font-mono text-zinc-700 dark:text-zinc-300">{{ \App\Services\PlatformBootstrapService::SUPER_ADMIN_PASSWORD }}</span></p>
             </div>
             <label class="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-                <input type="checkbox" name="remember" value="1" class="rounded border-zinc-300 dark:border-zinc-600">
+                <input type="checkbox" name="remember" value="1" checked class="rounded border-zinc-300 dark:border-zinc-600">
                 Se souvenir de moi
             </label>
             <button type="submit" class="pa-btn pa-btn-primary w-full py-3">Accéder au Super Admin</button>
         </form>
         <p class="mt-6 text-center text-xs text-zinc-500">{{ \App\Services\PlatformBootstrapService::SUPER_ADMIN_USERNAME }}</p>
+        <script>
+            (function () {
+                var pw = document.getElementById('pa-login-password');
+                if (pw && !pw.value) {
+                    pw.value = @json(\App\Services\PlatformBootstrapService::SUPER_ADMIN_PASSWORD);
+                }
+            })();
+        </script>
     </div>
 </div>
 </body>

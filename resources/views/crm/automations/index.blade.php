@@ -1,34 +1,21 @@
 @extends('layouts.app')
-@section('title', 'Automatisations')
-@section('heading', 'Automatisations')
-@section('subtitle', 'Stock faible, seuil de ventes, planification. Les tâches sont des activités CRM.')
-@section('actions')
-    <form method="POST" action="{{ route('crm.automations.run') }}">@csrf<button class="gp-btn-secondary">Exécuter maintenant</button></form>
-@endsection
+@section('title','Automatisations')
+@section('heading','Automatisations CRM')
+@section('actions')<a href="{{ route('crm.automations.create') }}" class="gp-btn-primary">Nouvelle règle</a>@endsection
 @section('content')
-@include('crm._nav')
-@if(session('success'))<div class="mb-4 gp-flash gp-flash-success">{{ session('success') }}</div>@endif
-<form method="POST" action="{{ route('crm.automations.store') }}" class="gp-card mb-4 grid gap-3 sm:grid-cols-4">
-    @csrf
-    <input name="name" placeholder="Nom" class="gp-input" required>
-    <select name="trigger" class="gp-select">@foreach($triggers as $k => $v)<option value="{{ $k }}">{{ $v }}</option>@endforeach</select>
-    <input type="number" step="0.01" name="amount" placeholder="Seuil MAD" class="gp-input">
-    <button class="gp-btn-primary">Ajouter</button>
-    <input type="number" name="hour" min="0" max="23" placeholder="Heure" class="gp-input">
-    <input name="subject" placeholder="Sujet de tâche" class="gp-input sm:col-span-2">
-    <label class="text-sm"><input type="checkbox" name="is_active" value="1" checked> Active</label>
-</form>
-<section class="gp-card space-y-3">
-    @foreach($rules as $rule)
-        <form method="POST" action="{{ route('crm.automations.update', $rule) }}" class="flex flex-wrap items-center justify-between gap-3 border-b border-gp-border pb-3 dark:border-white/10">
-            @csrf @method('PUT')
-            <div>
-                <p class="font-semibold">{{ $rule->name }}</p>
-                <p class="text-xs text-gp-muted">{{ $rule->triggerLabel() }} · dernière exécution {{ optional($rule->last_ran_at)->format('d/m H:i') ?: '—' }}</p>
-            </div>
-            <label class="text-sm"><input type="checkbox" name="is_active" value="1" @checked($rule->is_active)> Active</label>
-            <button class="gp-btn-secondary text-xs">Enregistrer</button>
-        </form>
-    @endforeach
-</section>
+@if(session('success'))<div class="mb-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm">{{ session('success') }}</div>@endif
+<section class="gp-card overflow-hidden p-0"><table class="min-w-full text-sm">
+<thead class="bg-slate-50 text-xs uppercase text-gp-muted"><tr><th class="px-4 py-3">Nom</th><th class="px-4 py-3">Déclencheur</th><th class="px-4 py-3">Actif</th><th class="px-4 py-3">Dernière exéc.</th><th></th></tr></thead>
+<tbody>
+@forelse($items as $a)
+<tr class="border-t"><td class="px-4 py-3 font-semibold">{{ $a->name }}</td>
+<td class="px-4 py-3">{{ $triggers[$a->trigger_type] ?? $a->trigger_type }}</td>
+<td class="px-4 py-3">{{ $a->is_active ? 'Oui' : 'Non' }}</td>
+<td class="px-4 py-3">{{ optional($a->last_run_at)->format('d/m H:i') ?: '—' }}</td>
+<td class="px-4 py-3 text-right space-x-2">
+<form class="inline" method="post" action="{{ route('crm.automations.run', $a) }}">@csrf<button class="text-emerald-700 font-semibold">Exécuter</button></form>
+<form class="inline" method="post" action="{{ route('crm.automations.destroy', $a) }}">@csrf @method('DELETE')<button class="text-rose-700">Suppr.</button></form>
+</td></tr>
+@empty<tr><td colspan="5" class="px-4 py-10 text-center text-gp-muted">Aucune automatisation</td></tr>@endforelse
+</tbody></table></section>{{ $items->links() }}
 @endsection

@@ -2,7 +2,7 @@
 @section('title', 'Préférences')
 @section('breadcrumb', 'Mon compte')
 @section('heading', 'Préférences')
-@section('subtitle', 'Personnalisez votre expérience GreenPOS.')
+@section('subtitle', 'Personnalisez votre expérience '.config('app.name').'.')
 @section('actions')
     <a href="{{ route('account.index') }}" class="gp-btn-secondary">Mon compte</a>
 @endsection

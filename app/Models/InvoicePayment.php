@@ -10,9 +10,11 @@ class InvoicePayment extends Model
     public const METHODS = [
         'cash' => 'Espèces',
         'card' => 'Carte bancaire',
-        'bank_transfer' => 'Virement',
+        'instant_transfer' => 'Virement instantané',
+        'bank_transfer' => 'Virement simple',
         'mobile' => 'Paiement mobile',
         'check' => 'Chèque',
+        'effet' => 'Effet',
         'other' => 'Autre',
     ];
 

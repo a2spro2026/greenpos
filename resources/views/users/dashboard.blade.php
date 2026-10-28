@@ -2,7 +2,7 @@
 
 @section('title', 'Utilisateurs')
 @section('breadcrumb', 'Administration / Utilisateurs')
-@section('heading', 'Dashboard Utilisateurs')
+@section('heading', 'Tableau de bord Utilisateurs')
 @section('subtitle', 'Pilotage des comptes, accès et activité des collaborateurs.')
 
 @section('actions')

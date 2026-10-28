@@ -237,7 +237,15 @@ Route::middleware(['workspace', 'audit'])->group(function () {
     Route::get('/pos/tickets', [PosTicketController::class, 'index'])->name('pos.tickets.index');
     Route::get('/pos/tickets/{sale}', [PosTicketController::class, 'show'])->name('pos.tickets.show');
     Route::get('/pos/tickets/{sale}/print', [PosTicketController::class, 'print'])->name('pos.tickets.print');
+    Route::get('/pos/tickets/{sale}/kitchen', [PosTicketController::class, 'kitchen'])->name('pos.tickets.kitchen');
     Route::post('/pos/tickets/{sale}/cancel', [PosTicketController::class, 'cancel'])->name('pos.tickets.cancel');
+
+    Route::get('/pos/tables', [\App\Http\Controllers\PosTableController::class, 'index'])->name('pos.tables.index');
+    Route::get('/pos/tables/floor', [\App\Http\Controllers\PosTableController::class, 'floor'])->name('pos.tables.floor');
+    Route::post('/pos/tables', [\App\Http\Controllers\PosTableController::class, 'store'])->name('pos.tables.store');
+    Route::delete('/pos/tables/{table}', [\App\Http\Controllers\PosTableController::class, 'destroy'])->name('pos.tables.destroy');
+    Route::get('/pos/kds', [\App\Http\Controllers\PosKdsController::class, 'index'])->name('pos.kds');
+    Route::post('/pos/kds/{sale}/ready', [\App\Http\Controllers\PosKdsController::class, 'markReady'])->name('pos.kds.ready');
 
     Route::get('/pos/sessions', [PosSessionController::class, 'index'])->name('pos.sessions.index');
     Route::get('/pos/sessions/open', [PosSessionController::class, 'create'])->name('pos.sessions.create');
@@ -346,6 +354,34 @@ Route::middleware(['workspace', 'audit'])->group(function () {
 
     // Paramètres généraux
     Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
+    Route::get('/settings/api-tokens', function () {
+        abort_unless(\App\Support\Workspace::can('settings.view'), 403);
+        $tokens = \App\Models\ApiToken::query()->forCompany(\App\Support\Workspace::company()->id)->latest()->get();
+
+        return view('settings.api-tokens', compact('tokens'));
+    })->name('api.tokens.index');
+    Route::post('/settings/api-tokens', function (\Illuminate\Http\Request $request) {
+        abort_unless(\App\Support\Workspace::can('settings.update'), 403);
+        $data = $request->validate(['name' => ['required', 'string', 'max:100']]);
+        $plain = \App\Models\ApiToken::generatePlainToken();
+        \App\Models\ApiToken::query()->create([
+            'company_id' => \App\Support\Workspace::company()->id,
+            'name' => $data['name'],
+            'token_hash' => \App\Models\ApiToken::hashToken($plain),
+            'token_prefix' => substr($plain, 0, 10),
+            'abilities' => ['products.read', 'stock.read'],
+            'created_by' => \App\Support\Workspace::user()?->id,
+        ]);
+
+        return back()->with('success', 'Token créé. Copiez-le maintenant : '.$plain);
+    })->name('api.tokens.store');
+    Route::delete('/settings/api-tokens/{token}', function (\App\Models\ApiToken $token) {
+        abort_unless(\App\Support\Workspace::can('settings.update'), 403);
+        abort_unless($token->company_id === \App\Support\Workspace::company()->id, 404);
+        $token->delete();
+
+        return back()->with('success', 'Token révoqué.');
+    })->name('api.tokens.destroy');
     Route::get('/setup/modules', [ModuleManagerController::class, 'setup'])->name('modules.setup');
     Route::post('/setup/modules', [ModuleManagerController::class, 'storeSetup'])->name('modules.setup.store');
     Route::get('/modules', [ModuleManagerController::class, 'index'])->name('modules.index');
@@ -455,4 +491,5 @@ Route::middleware(['workspace', 'audit'])->group(function () {
     Route::get('/audit/{audit}/print', [AuditController::class, 'printOne'])->name('audit.print-one');
 
     require __DIR__.'/parity.php';
+    require __DIR__.'/rimal.php';
 });

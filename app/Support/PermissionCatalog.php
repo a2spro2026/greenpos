@@ -38,6 +38,9 @@ class PermissionCatalog
         'notifications' => 'Notifications',
         'documents' => 'Documents',
         'audit' => 'Audit',
+        'hr' => 'RH & Paie',
+        'accounting' => 'Comptabilité',
+        'delivery' => 'Livreurs',
     ];
 
     /**
@@ -66,6 +69,9 @@ class PermissionCatalog
             'notifications' => ['view', 'create', 'update', 'delete'],
             'documents' => ['view', 'create', 'update', 'delete', 'export', 'print'],
             'audit' => ['view', 'export', 'print'],
+            'hr' => ['view', 'create', 'update', 'delete', 'export', 'print', 'validate'],
+            'accounting' => ['view', 'create', 'update', 'delete', 'export', 'print', 'validate'],
+            'delivery' => ['view', 'create', 'update', 'delete', 'export', 'print'],
         ];
     }
 
@@ -209,6 +215,9 @@ class PermissionCatalog
                 'notifications.view', 'notifications.update', 'notifications.archive', 'notifications.preferences',
                 'documents.view', 'documents.create', 'documents.update', 'documents.delete', 'documents.export', 'documents.download', 'documents.archive', 'documents.folders',
                 'audit.view', 'audit.export', 'audit.print', 'audit.critical',
+                'hr.view', 'hr.create', 'hr.update', 'hr.delete', 'hr.export', 'hr.print', 'hr.validate',
+                'accounting.view', 'accounting.create', 'accounting.update', 'accounting.delete', 'accounting.export', 'accounting.print', 'accounting.validate',
+                'delivery.view', 'delivery.create', 'delivery.update', 'delivery.delete', 'delivery.export', 'delivery.print',
                 'scope.all_stores',
             ],
             'accountant' => [
@@ -225,6 +234,8 @@ class PermissionCatalog
                 'sales.view', 'sales.refund', 'sales.export', 'sales.print',
                 'settings.lists',
                 'reports.view', 'reports.export', 'reports.print', 'reports.financial',
+                'hr.view', 'hr.export', 'hr.print',
+                'accounting.view', 'accounting.create', 'accounting.update', 'accounting.delete', 'accounting.export', 'accounting.print', 'accounting.validate',
                 'stores.view', 'stores.switch',
                 'companies.view', 'companies.switch',
                 'notifications.view', 'notifications.update', 'notifications.archive', 'notifications.preferences',
@@ -242,6 +253,7 @@ class PermissionCatalog
                 'invoices.view', 'invoices.create', 'invoices.print', 'invoices.pdf', 'invoices.send',
                 'quotes.view', 'quotes.create', 'quotes.update', 'quotes.export', 'quotes.print', 'quotes.convert', 'quotes.send',
                 'sales.view', 'sales.create', 'sales.update', 'sales.print',
+                'delivery.view', 'delivery.create', 'delivery.update',
                 'reports.view', 'reports.print',
                 'stores.switch',
                 'companies.switch',

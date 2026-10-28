@@ -40,7 +40,7 @@ class SalePaymentWorkflowService
         }
 
         $method = $list?->meta('method') ?: ($input['method'] ?? 'cash');
-        if (! array_key_exists($method, SalePayment::METHODS)) {
+        if (! array_key_exists($method, SalePayment::METHODS + \App\Models\PosPayment::METHODS)) {
             throw ValidationException::withMessages(['payments' => 'Mode de paiement invalide.']);
         }
 

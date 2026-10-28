@@ -6,7 +6,7 @@ use App\Models\PosPayment;
 use App\Models\PosSale;
 use App\Models\Printer;
 use App\Models\SalePayment;
-use App\Services\CollectionService;
+use App\Services\DeferredPaymentService;
 use App\Services\PosService;
 use App\Services\SaleRefundService;
 use App\Support\Workspace;
@@ -35,7 +35,9 @@ class PosTicketController extends Controller
                         ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', $term));
                 });
             })
-            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
+            ->when($request->input('status') === 'archived', fn ($q) => $q->where('status', 'held')->whereNotNull('archived_at'))
+            ->when($request->input('status') === 'held', fn ($q) => $q->where('status', 'held')->whereNull('archived_at'))
+            ->when($request->filled('status') && ! in_array($request->input('status'), ['held', 'archived'], true), fn ($q) => $q->where('status', $request->string('status')))
             ->when($request->filled('from'), fn ($q) => $q->whereDate('completed_at', '>=', $request->date('from')))
             ->latest('id')
             ->paginate(20)
@@ -43,7 +45,7 @@ class PosTicketController extends Controller
 
         return view('pos.tickets.index', [
             'tickets' => $tickets,
-            'statuses' => PosSale::STATUSES,
+            'statuses' => PosSale::STATUSES + ['archived' => 'En attente archivés'],
             'filters' => $request->only(['q', 'status', 'from']),
         ]);
     }
@@ -71,21 +73,6 @@ class PosTicketController extends Controller
             'sale' => $sale,
             'printer' => $this->printerFor($sale, 'customer'),
             'channel' => 'customer',
-        ]);
-    }
-
-    public function kitchen(PosSale $sale): View
-    {
-        $this->authorize('pos.reprint');
-        if ($sale->company_id !== Workspace::company()?->id) {
-            abort(404);
-        }
-        $sale->load(['lines.product.category', 'payments', 'customer', 'cashier', 'store', 'company']);
-
-        return view('pos.tickets.print', [
-            'sale' => $sale,
-            'printer' => $this->printerFor($sale, 'kitchen'),
-            'channel' => 'kitchen',
         ]);
     }
 
@@ -121,7 +108,7 @@ class PosTicketController extends Controller
         return redirect()->route('pos.tickets.show', $sale)->with('success', 'Remboursement enregistré.');
     }
 
-    public function collect(PosPayment $payment, CollectionService $collections): RedirectResponse
+    public function collect(PosPayment $payment, DeferredPaymentService $collections): RedirectResponse
     {
         $this->authorize('payments.collect');
         $this->ensurePayment($payment);
@@ -130,7 +117,7 @@ class PosTicketController extends Controller
         return back()->with('success', 'Encaissement enregistré.');
     }
 
-    public function reschedule(Request $request, PosPayment $payment, CollectionService $collections): RedirectResponse
+    public function reschedule(Request $request, PosPayment $payment, DeferredPaymentService $collections): RedirectResponse
     {
         $this->authorize('payments.collect');
         $this->ensurePayment($payment);
@@ -140,7 +127,7 @@ class PosTicketController extends Controller
         return back()->with('success', 'Échéance mise à jour.');
     }
 
-    public function cancelPayment(PosPayment $payment, CollectionService $collections): RedirectResponse
+    public function cancelPayment(PosPayment $payment, DeferredPaymentService $collections): RedirectResponse
     {
         $this->authorize('payments.collect');
         $this->ensurePayment($payment);
@@ -168,6 +155,28 @@ class PosTicketController extends Controller
         if ($payment->sale->company_id !== Workspace::company()?->id) {
             abort(404);
         }
+    }
+
+    public function kitchen(PosSale $sale): View
+    {
+        $this->authorize('pos.reprint');
+        if ($sale->company_id !== Workspace::company()?->id) {
+            abort(404);
+        }
+        $sale->load(['lines', 'store']);
+
+        return view('pos.tickets.kitchen', compact('sale'));
+    }
+
+    public function archive(PosSale $sale): RedirectResponse
+    {
+        $this->authorize('pos.hold');
+        if ($sale->company_id !== Workspace::company()?->id || $sale->status !== 'held') {
+            abort(404);
+        }
+        $sale->forceFill(['archived_at' => $sale->archived_at ? null : now()])->save();
+
+        return back()->with('success', $sale->archived_at ? 'Ticket archivé (masqué de « Reprendre », rien n’est supprimé).' : 'Ticket désarchivé : il réapparaît dans « Reprendre ».');
     }
 
     public function cancel(PosSale $sale): RedirectResponse

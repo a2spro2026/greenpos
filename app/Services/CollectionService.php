@@ -2,113 +2,110 @@
 
 namespace App\Services;
 
-use App\Models\PosPayment;
+use App\Models\Sale;
 use App\Models\SalePayment;
+use App\Support\Workspace;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-/**
- * Follow-up for deferred SalePayment / PosPayment rows.
- * Immediate payments stay on the existing recordPayment / POS checkout path.
- */
 class CollectionService
 {
-    public function __construct(private SalePaymentWorkflowService $workflow)
+    public function __construct(private CashJournalService $journal)
     {
     }
 
-    public function collect(SalePayment|PosPayment $payment, ?string $notes = null): SalePayment|PosPayment
+    public function pendingQuery(int $companyId)
     {
-        $this->assertDeferredOpen($payment);
-
-        return DB::transaction(function () use ($payment, $notes) {
-            $payment->update([
-                'collection_status' => 'collected',
-                'confirmed_at' => now(),
-            ]);
-
-            if ($payment instanceof SalePayment) {
-                $sale = $payment->sale;
-                $sale->update([
-                    'amount_paid' => round((float) $sale->amount_paid + (float) $payment->amount, 2),
-                ]);
-                $this->workflow->recordHistory($sale->company_id, 'collected', (float) $payment->amount, $payment->id, null, $notes);
-                $this->workflow->recalculateSale($sale->fresh());
-            } else {
-                $sale = $payment->sale;
-                $this->workflow->recordHistory($sale->company_id, 'collected', (float) $payment->amount, null, $payment->id, $notes);
-                $this->workflow->recalculatePos($sale->fresh());
-            }
-
-            return $payment->fresh();
-        });
+        return SalePayment::query()
+            ->whereHas('sale', fn ($q) => $q->where('company_id', $companyId))
+            ->where(function ($q) {
+                $q->where('is_deferred', true)->orWhere('status', 'pending');
+            })
+            ->where('status', '!=', 'cancelled')
+            ->with(['sale.customer', 'sale.store']);
     }
 
-    public function reschedule(SalePayment|PosPayment $payment, string $dueDate, ?string $notes = null): SalePayment|PosPayment
+    public function markCollected(SalePayment $payment, array $data = []): SalePayment
     {
-        $this->assertDeferredOpen($payment);
-
-        return DB::transaction(function () use ($payment, $dueDate, $notes) {
-            $payment->update([
-                'due_date' => $dueDate,
-                'scheduled_for' => $dueDate,
-                'collection_status' => 'scheduled',
-            ]);
-            $companyId = $payment->sale->company_id;
-            $this->workflow->recordHistory(
-                $companyId,
-                'rescheduled',
-                (float) $payment->amount,
-                $payment instanceof SalePayment ? $payment->id : null,
-                $payment instanceof PosPayment ? $payment->id : null,
-                $notes,
-                $dueDate
-            );
-
-            return $payment->fresh();
-        });
-    }
-
-    public function cancel(SalePayment|PosPayment $payment, ?string $notes = null): SalePayment|PosPayment
-    {
-        if (! $payment->is_deferred) {
-            throw ValidationException::withMessages(['payment' => 'Seuls les paiements différés se annulent ici.']);
-        }
-        if ($payment->collection_status === 'cancelled') {
+        if ($payment->status === 'collected') {
             return $payment;
         }
-        if (in_array($payment->collection_status, SalePaymentWorkflowService::SETTLED_COLLECTION, true)) {
-            throw ValidationException::withMessages(['payment' => 'Un paiement déjà encaissé ne peut pas être annulé depuis le suivi.']);
-        }
 
-        return DB::transaction(function () use ($payment, $notes) {
-            $payment->update(['collection_status' => 'cancelled']);
+        return DB::transaction(function () use ($payment, $data) {
+            $payment->update([
+                'status' => 'collected',
+                'is_deferred' => false,
+                'collected_at' => now(),
+                'paid_at' => $payment->paid_at ?? now(),
+                'collection_notes' => $data['notes'] ?? $payment->collection_notes,
+            ]);
+
             $sale = $payment->sale;
-            $this->workflow->recordHistory(
-                $sale->company_id,
-                'cancelled',
-                (float) $payment->amount,
-                $payment instanceof SalePayment ? $payment->id : null,
-                $payment instanceof PosPayment ? $payment->id : null,
-                $notes
-            );
-            if ($payment instanceof SalePayment) {
-                $this->workflow->recalculateSale($sale->fresh());
-            } else {
-                $this->workflow->recalculatePos($sale->fresh());
+            if ($sale) {
+                $collected = (float) $sale->payments()->where('status', 'collected')->sum('amount');
+                $sale->update(['amount_paid' => $collected]);
             }
 
-            return $payment->fresh();
+            $this->journal->record([
+                'entry_date' => now()->toDateString(),
+                'direction' => 'in',
+                'source_type' => 'collection',
+                'source_id' => $payment->id,
+                'label' => 'Encaissement '.$payment->sale?->number,
+                'amount' => (float) $payment->amount,
+                'store_id' => $sale?->store_id,
+                'payment_method' => $payment->method,
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            return $payment->fresh(['sale']);
         });
     }
 
-    private function assertDeferredOpen(SalePayment|PosPayment $payment): void
+    public function reschedule(SalePayment $payment, string $dueAt): SalePayment
     {
-        if (! $payment->is_deferred) {
-            throw ValidationException::withMessages(['payment' => 'Ce paiement n\'est pas différé.']);
+        $payment->update([
+            'due_at' => $dueAt,
+            'is_deferred' => true,
+            'status' => 'pending',
+        ]);
+
+        return $payment;
+    }
+
+    public function cancel(SalePayment $payment, ?string $notes = null): SalePayment
+    {
+        $payment->update([
+            'status' => 'cancelled',
+            'collection_notes' => $notes,
+        ]);
+
+        $sale = $payment->sale;
+        if ($sale) {
+            $collected = (float) $sale->payments()->where('status', 'collected')->sum('amount');
+            $sale->update(['amount_paid' => $collected]);
         }
-        if (! in_array($payment->collection_status, SalePaymentWorkflowService::OPEN_COLLECTION, true)) {
-            throw ValidationException::withMessages(['payment' => 'Ce paiement n\'est plus en attente d\'encaissement.']);
+
+        return $payment;
+    }
+
+    public function createDeferred(Sale $sale, array $data): SalePayment
+    {
+        $amount = (float) ($data['amount'] ?? 0);
+        if ($amount <= 0) {
+            throw ValidationException::withMessages(['amount' => 'Montant invalide.']);
         }
+
+        return SalePayment::query()->create([
+            'sale_id' => $sale->id,
+            'method' => $data['method'] ?? 'transfer',
+            'amount' => $amount,
+            'status' => 'pending',
+            'is_deferred' => true,
+            'due_at' => $data['due_at'] ?? now()->addDays(7),
+            'reference' => $data['reference'] ?? null,
+            'paid_at' => null,
+            'created_by' => Workspace::user()?->id,
+        ]);
     }
 }

@@ -254,14 +254,17 @@ const _origFetch = window.fetch?.bind(window);
 if (_origFetch) {
     window.fetch = async (...args) => {
         const res = await _origFetch(...args);
+        const sessionLoginPath = location.pathname.startsWith('/admin') || location.pathname.startsWith('/superadmin')
+            ? '/admin/login'
+            : '/login?expired=1';
         if (res.status === 401 || res.status === 419) {
             try {
                 const data = await res.clone().json();
                 if (data?.code === 'session_expired' || data?.code === 'csrf_expired' || res.status === 419) {
-                    window.location.href = '/login?expired=1';
+                    window.location.href = sessionLoginPath;
                 }
             } catch {
-                if (res.status === 419) window.location.href = '/login?expired=1';
+                if (res.status === 419) window.location.href = sessionLoginPath;
             }
         }
         if (res.status === 423) {

@@ -2,7 +2,7 @@
 
 @section('title', 'Stock')
 @section('breadcrumb', 'Catalogue / Stock')
-@section('heading', 'Dashboard Stock')
+@section('heading', 'Tableau de bord Stock')
 @section('subtitle', 'Pilotage des niveaux, mouvements et alertes par boutique.')
 
 @section('actions')

@@ -1,6 +1,6 @@
 <nav class="mb-6 flex flex-wrap gap-2">
     @foreach([
-        ['route' => 'crm.dashboard', 'label' => 'Dashboard'],
+        ['route' => 'crm.dashboard', 'label' => 'Tableau de bord'],
         ['route' => 'crm.pipeline', 'label' => 'Pipeline'],
         ['route' => 'crm.leads.index', 'label' => 'Leads'],
         ['route' => 'crm.opportunities.index', 'label' => 'Opportunités'],
@@ -8,6 +8,7 @@
         ['route' => 'crm.calendar', 'label' => 'Calendrier'],
         ['route' => 'crm.incidents.index', 'label' => 'Incidents'],
         ['route' => 'crm.automations.index', 'label' => 'Automatisations'],
+        ['route' => 'crm.automation-rules.index', 'label' => 'Règles auto (stock)'],
         ['route' => 'crm.emails.index', 'label' => 'Emails'],
         ['route' => 'crm.reports', 'label' => 'Rapports'],
     ] as $item)

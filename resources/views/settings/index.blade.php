@@ -3,7 +3,7 @@
 @section('title', 'Paramètres')
 @section('breadcrumb', 'Administration / Paramètres')
 @section('heading', 'Paramètres généraux')
-@section('subtitle', 'Centre de configuration de votre entreprise GreenPOS.')
+@section('subtitle', 'Centre de configuration de votre entreprise '.config('app.name').'.')
 
 @section('content')
     <div class="flex flex-col gap-6 lg:flex-row">

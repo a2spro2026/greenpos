@@ -27,6 +27,9 @@ class PosSale extends Model
         'pos_session_id',
         'customer_id',
         'cashier_id',
+        'employee_id',
+        'delivery_agent_id',
+        'delivery_commission',
         'number',
         'client_uuid',
         'ticket_name',
@@ -36,7 +39,22 @@ class PosSale extends Model
         'predefined_ticket_id',
         'delivery_platform_id',
         'status',
+        'service_mode',
+        'ticket_name',
+        'ticket_discount_percent',
+        'delivery_platform',
+        'platform_commission',
+        'pos_table_id',
         'payment_status_code',
+        'ticket_group',
+        'service_mode_list_id',
+        'predefined_ticket_id',
+        'delivery_platform_id',
+        'appointment_at',
+        'pickup_date',
+        'delivery_address',
+        'client_uuid',
+        'amount_refunded',
         'subtotal_ht',
         'tax_total',
         'discount_total',
@@ -56,6 +74,7 @@ class PosSale extends Model
     protected function casts(): array
     {
         return [
+            'archived_at' => 'datetime',
             'subtotal_ht' => 'decimal:2',
             'tax_total' => 'decimal:2',
             'discount_total' => 'decimal:2',
@@ -64,6 +83,8 @@ class PosSale extends Model
             'appointment_at' => 'datetime',
             'pickup_date' => 'date',
             'held_payload' => 'array',
+            'ticket_discount_percent' => 'decimal:2',
+            'platform_commission' => 'decimal:2',
             'held_at' => 'datetime',
             'completed_at' => 'datetime',
             'cancelled_at' => 'datetime',
@@ -93,6 +114,11 @@ class PosSale extends Model
     public function cashier(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cashier_id');
+    }
+
+    public function deliveryAgent(): BelongsTo
+    {
+        return $this->belongsTo(DeliveryAgent::class, 'delivery_agent_id');
     }
 
     public function lines(): HasMany
@@ -132,7 +158,17 @@ class PosSale extends Model
 
     public function statusLabel(): string
     {
+        if ($this->isEmptyHold()) {
+            return 'Suspendue (vide)';
+        }
+
         return self::STATUSES[$this->status] ?? $this->status;
+    }
+
+    /** Ancien ticket suspendu sans montant : conservé en base mais exclu de « Reprendre ». */
+    public function isEmptyHold(): bool
+    {
+        return $this->status === 'held' && (float) $this->total_ttc <= 0;
     }
 
     public function statusColor(): string

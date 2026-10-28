@@ -47,7 +47,7 @@
 
     <aside class="space-y-4">
         <article class="gp-card">
-            <h2 class="mb-2 text-sm font-bold">GreenPOS AI</h2>
+            <h2 class="mb-2 text-sm font-bold">Assistant IA</h2>
             <pre class="whitespace-pre-wrap text-xs text-gp-muted">{{ $summary }}</pre>
             <button type="button" id="crm-ai-email" class="gp-btn-secondary mt-3 w-full text-xs" data-url="{{ route('crm.ai') }}" data-lead="{{ $lead->id }}">Rédiger un email (IA)</button>
             <pre id="crm-ai-out" class="mt-3 hidden whitespace-pre-wrap rounded-lg bg-gp-surface-2 p-3 text-xs"></pre>

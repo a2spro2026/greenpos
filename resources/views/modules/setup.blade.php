@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Catalogue des modules — GreenPOS</title>
+    <title>Catalogue des modules — {{ config('app.name') }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
@@ -23,7 +23,7 @@
     <div class="ms-setup-brand">
         <span class="ms-setup-mark">GP</span>
         <div>
-            <strong>GreenPOS</strong>
+            <strong>{{ config('app.name') }}</strong>
             <span>{{ $company->name }}</span>
         </div>
     </div>
@@ -59,7 +59,7 @@
         <section class="ms-setup-hero">
             <p class="ms-setup-kicker">Première configuration</p>
             <h1>Composez votre ERP</h1>
-            <p>Choisissez les applications dont votre entreprise a besoin. Après validation, tout ajout passera par le Super Admin GreenPOS.</p>
+            <p>Choisissez les applications dont votre entreprise a besoin. Après validation, tout ajout passera par le Super Admin {{ config('app.name') }}.</p>
             <label class="ms-search ms-search--hero">
                 <svg class="ms-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/></svg>
                 <input type="search" placeholder="Rechercher un module..." data-ms-search autocomplete="off">
@@ -107,7 +107,7 @@
                                         @endif
                                     </div>
                                     <p>{{ $mod['description'] }}</p>
-                                    <span class="ms-app-dev">GreenPOS · v{{ $mod['version'] }}</span>
+                                    <span class="ms-app-dev">{{ config('app.name') }} · v{{ $mod['version'] }}</span>
                                 </div>
                                 @if($selectable)
                                     <button type="button" class="ms-app-cta ms-pick-btn">Ajouter</button>

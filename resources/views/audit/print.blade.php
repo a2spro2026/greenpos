@@ -16,7 +16,7 @@
 </head>
 <body>
     <button onclick="window.print()">Imprimer</button>
-    <h1>Journal d'audit GreenPOS</h1>
+    <h1>Journal d'audit {{ config('app.name') }}</h1>
     <p class="meta">{{ now()->format('d/m/Y H:i') }} · {{ $events->count() }} événement(s)</p>
     <table>
         <thead>

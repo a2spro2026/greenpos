@@ -2,7 +2,7 @@
 
 @section('title', 'Achats')
 @section('breadcrumb', 'Approvisionnement / Achats')
-@section('heading', 'Dashboard Achats')
+@section('heading', 'Tableau de bord Achats')
 @section('subtitle', 'Pilotage des commandes, réceptions et dépenses fournisseurs.')
 
 @section('actions')

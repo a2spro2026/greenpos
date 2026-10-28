@@ -118,21 +118,29 @@ class NotificationService
     }
 
     /**
-     * External channels are prepared (logged) — not fully wired yet.
+     * Deliver external channels via MessagingService when configured.
      */
     protected function deliverPreparedChannels(AppNotification $notification): void
     {
         $channels = $notification->channels ?? [];
+        $messaging = app(MessagingService::class);
+        $user = $notification->user_id ? User::query()->find($notification->user_id) : null;
+        $body = trim(($notification->title ?? '')."\n".($notification->body ?? ''));
 
-        foreach (['email', 'sms', 'whatsapp', 'push'] as $channel) {
-            if (! empty($channels[$channel])) {
-                Log::info("notification.{$channel}.prepared", [
-                    'notification_id' => $notification->id,
-                    'company_id' => $notification->company_id,
-                    'user_id' => $notification->user_id,
-                    'title' => $notification->title,
-                ]);
-            }
+        if (! empty($channels['email']) && $user?->email) {
+            $messaging->sendEmail($user->email, $notification->title ?? 'GreenPOS', $body);
+        }
+        if (! empty($channels['sms']) && ($user?->phone ?? $user?->mobile ?? null)) {
+            $messaging->sendSms($user->phone ?? $user->mobile, $body);
+        }
+        if (! empty($channels['whatsapp']) && ($user?->phone ?? $user?->mobile ?? null)) {
+            $messaging->sendWhatsapp($user->phone ?? $user->mobile, $body);
+        }
+        if (! empty($channels['push'])) {
+            Log::info('notification.push.prepared', [
+                'notification_id' => $notification->id,
+                'user_id' => $notification->user_id,
+            ]);
         }
     }
 

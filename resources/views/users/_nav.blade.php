@@ -1,6 +1,6 @@
 @php
     $items = [
-        ['route' => 'users.dashboard', 'label' => 'Dashboard', 'match' => 'users.dashboard'],
+        ['route' => 'users.dashboard', 'label' => 'Tableau de bord', 'match' => 'users.dashboard'],
         ['route' => 'users.index', 'label' => 'Utilisateurs', 'match' => 'users.index'],
         ['route' => 'users.create', 'label' => 'Nouvel utilisateur', 'match' => 'users.create'],
     ];
