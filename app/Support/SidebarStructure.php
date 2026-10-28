@@ -131,7 +131,7 @@ class SidebarStructure
                     self::item('Langue', 'settings.section', 'settings', 'settings.view', 'settings', 'settings.section', params: ['section' => 'languages']),
                     self::item('Listes personnalisées', 'settings.section', 'settings', 'settings.view', 'settings', 'settings.section', params: ['section' => 'numbering']),
                     self::item('Sauvegarde & restauration', 'system.backups', 'system', 'settings.view', 'system', 'system.backups*'),
-                    self::item('Modules activés', 'modules.index', 'modules', 'settings.view', 'modules', 'modules.*'),
+                    self::item('Abonnement & modules', 'account.subscription', 'settings', 'settings.view', 'modules', 'account.subscription'),
                 ],
             ],
             [

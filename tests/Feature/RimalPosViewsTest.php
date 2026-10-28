@@ -193,5 +193,6 @@ class RimalPosViewsTest extends RimalPosTest
         }
         $this->get(route('reports.sales'))->assertOk()->assertSee('Export Excel')->assertSee('Période');
         $this->get(route('settings.section', 'pos'))->assertOk()->assertDontSee('Configurez les options de cette section.');
+        $this->get(route('account.subscription'))->assertOk()->assertSee('Modules activés');
     }
 }

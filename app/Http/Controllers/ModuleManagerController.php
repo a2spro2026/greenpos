@@ -85,7 +85,7 @@ class ModuleManagerController extends Controller
 
         return redirect()
             ->route('home')
-            ->with('warning', 'Pour ajouter un module, contactez le Super Admin GreenPOS.');
+            ->with('warning', 'Pour ajouter un module, contactez le Super Admin '.config('app.name').'.');
     }
 
     public function show(string $module): RedirectResponse

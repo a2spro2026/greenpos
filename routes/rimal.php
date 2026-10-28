@@ -25,3 +25,6 @@ Route::middleware(['auth'])->group(function () {
 Route::get('/pos/sync-conflicts', [\App\Http\Controllers\PosSyncConflictController::class, 'index'])->name('pos.sync-conflicts.index');
 Route::post('/pos/sync-conflicts/{conflict}/retry', [\App\Http\Controllers\PosSyncConflictController::class, 'retry'])->name('pos.sync-conflicts.retry');
 Route::post('/pos/sync-conflicts/{conflict}/resolve', [\App\Http\Controllers\PosSyncConflictController::class, 'resolve'])->name('pos.sync-conflicts.resolve');
+
+// Page abonnement côté entreprise (lecture seule)
+Route::get('/abonnement', [\App\Http\Controllers\SubscriptionInfoController::class, 'show'])->name('account.subscription');
