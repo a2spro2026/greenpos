@@ -2,7 +2,7 @@
 
 @section('title', 'RH')
 @section('breadcrumb', 'Ressources Humaines')
-@section('heading', 'Dashboard RH')
+@section('heading', 'Tableau de bord RH')
 @section('subtitle', 'Collaborateurs, présence et préparation de la paie.')
 
 @section('actions')

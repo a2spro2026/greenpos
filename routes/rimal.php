@@ -28,3 +28,8 @@ Route::post('/pos/sync-conflicts/{conflict}/resolve', [\App\Http\Controllers\Pos
 
 // Page abonnement côté entreprise (lecture seule)
 Route::get('/abonnement', [\App\Http\Controllers\SubscriptionInfoController::class, 'show'])->name('account.subscription');
+
+// Catégories produits
+Route::get('/products/categories', [\App\Http\Controllers\CategoryController::class, 'index'])->name('products.categories.index');
+Route::post('/products/categories', [\App\Http\Controllers\CategoryController::class, 'store'])->name('products.categories.store');
+Route::put('/products/categories/{category}', [\App\Http\Controllers\CategoryController::class, 'update'])->name('products.categories.update');

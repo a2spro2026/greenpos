@@ -2,7 +2,7 @@
 
 @section('title', 'POS')
 @section('breadcrumb', 'Ventes / POS')
-@section('heading', 'Dashboard POS')
+@section('heading', 'Tableau de bord POS')
 @section('subtitle', 'Ventes caisse d’aujourd’hui ('.now()->format('d/m/Y').'). Pour une autre période, voir Rapports.')
 
 @section('actions')

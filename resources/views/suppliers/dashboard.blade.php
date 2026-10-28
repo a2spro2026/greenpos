@@ -2,7 +2,7 @@
 
 @section('title', 'Fournisseurs')
 @section('breadcrumb', 'Approvisionnement / Fournisseurs')
-@section('heading', 'Dashboard Fournisseurs')
+@section('heading', 'Tableau de bord Fournisseurs')
 @section('subtitle', 'Référentiel partenaires et performance d’approvisionnement.')
 
 @section('actions')

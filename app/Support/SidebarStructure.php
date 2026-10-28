@@ -38,9 +38,9 @@ class SidebarStructure
             [
                 'label' => 'Catalogue',
                 'items' => [
-                    self::item('Produits / Articles', 'products.index', 'products', 'products.view', 'products', 'products.*'),
-                    self::item('Catégories', 'products.index', 'products', 'products.view', 'categories', 'products.*', query: ['tab' => 'categories']),
-                    self::item('Options & variantes', 'products.index', 'products', 'products.view', 'products', 'products.*', query: ['tab' => 'variants']),
+                    self::item('Produits / Articles', 'products.index', 'products', 'products.view', 'products', 'products.index'),
+                    self::item('Catégories', 'products.categories.index', 'products', 'products.view', 'categories', 'products.categories.*'),
+                    self::item('Options & variantes', 'products.options.index', 'products', 'products.view', 'products', 'products.options.*'),
                 ],
             ],
             [
@@ -81,7 +81,7 @@ class SidebarStructure
                 'items' => [
                     self::item('Productions', 'ops.production.index', 'production', 'stock.view', 'inventory', 'ops.production.*'),
                     self::item('Fiches techniques / Recettes', 'ops.production.bom', 'production', 'stock.view', 'inventory', 'ops.production.bom*'),
-                    self::item('Matières premières', 'products.index', 'products', 'products.view', 'products', 'products.*', query: ['kind' => 'raw']),
+                    self::item('Matières premières', 'products.index', 'products', 'products.view', 'products', 'products.*', query: ['type' => 'raw_material']),
                     self::item('Consommations et pertes', 'ops.losses.index', 'losses', 'stock.adjust', 'stock', 'ops.losses.*'),
                     self::item('Coûts de production', 'ops.production.index', 'production', 'stock.view', 'reports', 'ops.production.*', query: ['view' => 'costs']),
                 ],
@@ -91,11 +91,11 @@ class SidebarStructure
                 'items' => [
                     self::item('Dépenses', 'accounting.expenses.index', 'accounting', 'accounting.view', 'payments', 'accounting.expenses.*'),
                     self::item('Encaissements', 'accounting.collections.index', 'accounting', 'accounting.view', 'payments', 'accounting.collections.*'),
-                    self::item('Décaissements', 'accounting.expenses.index', 'accounting', 'accounting.view', 'payments', 'accounting.expenses.*', query: ['flow' => 'out']),
+                    self::item('Décaissements', 'accounting.cash.index', 'accounting', 'accounting.view', 'payments', 'accounting.cash.*', query: ['direction' => 'out']),
                     self::item('Créances (chèques, effets, crédits)', 'pos.collections', 'pos', 'pos.view', 'invoices', 'pos.collections'),
                     self::item('Commissions', 'hr.payroll.index', 'hr', 'hr.view', 'payments', 'hr.payroll.*'),
                     self::item('Trésorerie (caisse & banque)', 'accounting.cash.index', 'accounting', 'accounting.view', 'accounting', 'accounting.cash.*'),
-                    self::item('Comptabilité', 'accounting.home', 'accounting', 'accounting.view', 'accounting', 'accounting.*'),
+                    self::item('Comptabilité (grand livre)', 'accounting.ledger.index', 'accounting', 'accounting.view', 'accounting', 'accounting.*'),
                 ],
             ],
             [

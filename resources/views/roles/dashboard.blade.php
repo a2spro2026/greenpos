@@ -2,7 +2,7 @@
 
 @section('title', 'Rôles & Permissions')
 @section('breadcrumb', 'Administration / Rôles')
-@section('heading', 'Dashboard RBAC')
+@section('heading', 'Rôles & autorisations')
 @section('subtitle', 'Contrôle d\'accès basé sur les rôles — pilotage des permissions '.config('app.name').'.')
 
 @section('actions')

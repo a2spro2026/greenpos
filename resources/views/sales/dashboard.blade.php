@@ -2,7 +2,7 @@
 
 @section('title', 'Ventes')
 @section('breadcrumb', 'Ventes / Dashboard')
-@section('heading', 'Dashboard Ventes')
+@section('heading', 'Tableau de bord Ventes')
 @section('subtitle', 'Suivi des performances commerciales et des ventes.')
 
 @section('actions')

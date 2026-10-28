@@ -2,7 +2,7 @@
 
 @section('title', 'Clients')
 @section('breadcrumb', 'Relation Client')
-@section('heading', 'Dashboard Clients')
+@section('heading', 'Tableau de bord Clients')
 @section('subtitle', 'Référentiel clients, activité et préparation commerciale.')
 
 @section('actions')
@@ -66,7 +66,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script>
         const evolution = @json($evolution);
-        const top = @json($top->map(fn ($c) => ['name' => $c->displayName(), 'total' => (float) $c->lifetime_revenue]));
+        const topCustomers = @json($top->map(fn ($c) => ['name' => $c->displayName(), 'total' => (float) $c->lifetime_revenue]));
         const isDark = document.documentElement.classList.contains('dark');
         const tick = isDark ? '#94a3b8' : '#64748b';
         const colors = ['#16a34a','#0ea5e9','#f59e0b','#8b5cf6','#ef4444','#14b8a6'];
@@ -78,7 +78,7 @@
         });
         new Chart(document.getElementById('customers-top-chart'), {
             type: 'bar',
-            data: { labels: top.map(i => i.name), datasets: [{ data: top.map(i => i.total), backgroundColor: colors, borderRadius: 8 }] },
+            data: { labels: topCustomers.map(i => i.name), datasets: [{ data: topCustomers.map(i => i.total), backgroundColor: colors, borderRadius: 8 }] },
             options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: tick } }, y: { ticks: { color: tick } } } }
         });
     </script>

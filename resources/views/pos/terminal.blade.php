@@ -251,7 +251,7 @@
 
 {{-- Held sales modal --}}
 <div id="pos-held-modal" class="pos-modal-backdrop fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4">
-    <div class="w-full max-w-md rounded-3xl bg-[#111827] p-5 shadow-2xl ring-1 ring-white/10">
+    <div class="pos-dark w-full max-w-md rounded-3xl bg-[#111827] p-5 shadow-2xl ring-1 ring-white/10">
         <div class="mb-4 flex items-center justify-between">
             <h3 class="text-lg font-bold">Tickets enregistrés</h3>
             <button type="button" data-close-held class="rounded-lg p-2 hover:bg-white/10">✕</button>
@@ -453,7 +453,7 @@
                     </div>
                     <button type="button" data-remove="${i}" class="rounded-lg px-2 py-1 text-rose-300 hover:bg-rose-500/20">✕</button>
                 </div>
-                <div class="mt-2 flex items-center gap-2">
+                <div class="mt-2 flex flex-wrap items-center gap-2">
                     <button type="button" data-dec="${i}" class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-lg font-bold">−</button>
                     <input data-qty="${i}" type="number" min="0.001" step="1" value="${l.qty}" class="h-10 w-16 rounded-xl bg-[#0b1220] text-center text-sm font-bold ring-1 ring-white/10">
                     <button type="button" data-inc="${i}" class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-lg font-bold">+</button>

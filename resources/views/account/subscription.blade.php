@@ -11,7 +11,7 @@
         @if($subscriptions->isEmpty())
             <p class="text-sm text-gp-muted">Aucun abonnement enregistré pour cette entreprise. Pour toute question de formule, contactez le support {{ config('app.name') }}.</p>
         @else
-            <table class="w-full text-sm">
+            <div class="overflow-x-auto"><table class="w-full min-w-[640px] text-sm">
                 <thead><tr class="text-left text-xs uppercase text-gp-muted"><th class="py-2">Formule</th><th>Statut</th><th>Cycle</th><th class="text-right">Montant</th><th>Début</th><th>Fin d'essai</th><th>Renouvellement / fin</th></tr></thead>
                 <tbody>
                     @foreach($subscriptions as $s)
@@ -26,7 +26,7 @@
                         </tr>
                     @endforeach
                 </tbody>
-            </table>
+            </table></div>
         @endif
     </section>
 

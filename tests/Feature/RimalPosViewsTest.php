@@ -194,5 +194,8 @@ class RimalPosViewsTest extends RimalPosTest
         $this->get(route('reports.sales'))->assertOk()->assertSee('Export Excel')->assertSee('Période');
         $this->get(route('settings.section', 'pos'))->assertOk()->assertDontSee('Configurez les options de cette section.');
         $this->get(route('account.subscription'))->assertOk()->assertSee('Modules activés');
+        $this->get(route('products.categories.index'))->assertOk()->assertSee('Catégories');
+        $this->post(route('products.categories.store'), ['name' => 'Viennoiseries'])->assertRedirect();
+        $this->assertDatabaseHas('categories', ['name' => 'Viennoiseries', 'company_id' => $this->company->id]);
     }
 }

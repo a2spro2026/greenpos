@@ -2,7 +2,7 @@
 
 @section('title', 'Facturation')
 @section('breadcrumb', 'Finance / Facturation')
-@section('heading', 'Dashboard Facturation')
+@section('heading', 'Tableau de bord Facturation')
 @section('subtitle', 'Suivi des factures, encaissements et échéances.')
 
 @section('actions')

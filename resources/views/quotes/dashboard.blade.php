@@ -2,7 +2,7 @@
 
 @section('title', 'Devis')
 @section('breadcrumb', 'Ventes / Devis')
-@section('heading', 'Dashboard Devis')
+@section('heading', 'Tableau de bord Devis')
 @section('subtitle', 'Suivi commercial des propositions et conversions.')
 
 @section('actions')
