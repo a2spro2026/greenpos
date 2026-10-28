@@ -154,6 +154,7 @@ class SettingController extends Controller
             'section' => $section,
             'title' => CompanySetting::GROUPS[$section],
             'group' => $section,
+            'subtitle' => collect($this->sections())->firstWhere('key', $section)['desc'] ?? null,
         ]);
     }
 
@@ -180,7 +181,7 @@ class SettingController extends Controller
             ['key' => 'currencies', 'label' => 'Devises', 'desc' => 'Devise et formats monétaires', 'route' => 'settings.section', 'params' => ['section' => 'currencies'], 'icon' => 'currency'],
             ['key' => 'languages', 'label' => 'Langues', 'desc' => 'Locales et langues', 'route' => 'settings.section', 'params' => ['section' => 'languages'], 'icon' => 'lang'],
             ['key' => 'numbering', 'label' => 'Numérotation', 'desc' => 'Préfixes et compteurs', 'route' => 'settings.section', 'params' => ['section' => 'numbering'], 'icon' => 'hash'],
-            ['key' => 'pos', 'label' => 'POS & Caisse', 'desc' => 'Terminal et périphériques', 'route' => 'settings.section', 'params' => ['section' => 'pos'], 'icon' => 'pos'],
+            ['key' => 'pos', 'label' => 'POS & Caisse', 'desc' => 'Terminal, affichage des catégories, tickets, imprimantes et périphériques', 'route' => 'settings.section', 'params' => ['section' => 'pos'], 'icon' => 'pos'],
             ['key' => 'invoicing', 'label' => 'Facturation', 'desc' => 'PDF, délais, mentions', 'route' => 'settings.section', 'params' => ['section' => 'invoicing'], 'icon' => 'invoice'],
             ['key' => 'payments', 'label' => 'Paiements', 'desc' => 'Modes et arrondi', 'route' => 'settings.section', 'params' => ['section' => 'payments'], 'icon' => 'pay'],
             ['key' => 'lists', 'label' => 'Listes personnalisées', 'desc' => 'Tickets, services, paiements, taxes, remises, dépenses', 'route' => 'settings.lists.index', 'icon' => 'list'],

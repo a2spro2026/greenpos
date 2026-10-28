@@ -3,7 +3,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Terminal POS — GreenPOS</title>
+    <title>Terminal POS — {{ config('app.name') }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -40,10 +40,23 @@
             transition: background-color .25s ease, border-color .25s ease;
         }
         html.dark .pos-chrome { background: #111827; border-color: rgba(255,255,255,.1); }
+        /* Panneaux toujours sombres (panier, paiement) : texte clair quel que soit le thème */
+        .pos-dark { color: #e5e7eb; }
+        .pos-dark h3, .pos-dark .pos-strong { color: #fff; }
+        .pos-dark .text-slate-500 { color: #94a3b8; }
+        .pos-dark .text-slate-400 { color: #cbd5e1; }
+        .pos-dark input, .pos-dark select, .pos-dark textarea { color: #f8fafc; background-color: rgba(255,255,255,.06); border-color: rgba(255,255,255,.18); }
+        .pos-dark input::placeholder, .pos-dark textarea::placeholder { color: #94a3b8; opacity: 1; }
+        .pos-dark select option { color: #0f172a; background: #fff; }
+        .pos-dark input[type=date] { color-scheme: dark; }
+        .pos-dark .pay-method:not(.bg-emerald-500), .pos-dark [data-quick]:not([data-quick=exact]), .pos-dark [data-close-pay] { color: #f1f5f9; background-color: rgba(255,255,255,.08); }
+        .pos-dark .pay-method:not(.bg-emerald-500):hover, .pos-dark [data-quick]:not([data-quick=exact]):hover { background-color: rgba(255,255,255,.16); }
     </style>
 </head>
 @php
     $catLeft = ($categoriesPosition ?? 'bottom') === 'left';
+    // Modes historiques conservés pour l'affichage des anciennes ventes, masqués à l'encaissement.
+    $gridMethods = array_diff_key($paymentMethods, array_flip(['bank_transfer', 'check']));
 @endphp
 <body class="pos-shell antialiased" style="font-family:'Plus Jakarta Sans',system-ui,sans-serif">
 @php
@@ -105,14 +118,14 @@
                     <div class="flex gap-2 overflow-x-auto pb-1">
                         @foreach($favorites as $fav)
                             <button type="button"
-                                    class="pos-fav shrink-0 rounded-xl bg-emerald-500/15 px-3 py-2 text-left text-sm font-semibold text-emerald-200 ring-1 ring-emerald-500/30 hover:bg-emerald-500/25"
+                                    class="pos-fav shrink-0 rounded-xl bg-emerald-500/15 px-3 py-2 text-left text-sm font-semibold text-emerald-900 ring-1 ring-emerald-500/40 hover:bg-emerald-500/25 dark:text-emerald-100"
                                     data-id="{{ $fav->id }}"
                                     data-name="{{ $fav->name }}"
                                     data-price="{{ $fav->sale_price }}"
                                     data-tax="{{ $fav->tax_rate }}"
                                     data-sku="{{ $fav->sku }}">
                                 {{ \Illuminate\Support\Str::limit($fav->name, 22) }}
-                                <span class="mt-0.5 block text-xs font-medium text-emerald-300/80">{{ number_format($fav->sale_price, 2, ',', ' ') }}</span>
+                                <span class="mt-0.5 block text-xs font-medium text-emerald-700 dark:text-emerald-300">{{ number_format($fav->sale_price, 2, ',', ' ') }}</span>
                             </button>
                         @endforeach
                     </div>
@@ -139,7 +152,7 @@
     </section>
 
     {{-- RIGHT: cart --}}
-    <aside class="flex min-h-[50dvh] flex-col bg-[#111827] lg:min-h-0">
+    <aside class="pos-dark flex min-h-[50dvh] flex-col bg-[#111827] lg:min-h-0">
         <div class="border-b border-white/10 px-4 py-3">
             <div class="flex items-center justify-between gap-2">
                 <h2 class="text-sm font-bold">Panier</h2>
@@ -264,7 +277,7 @@
 
 {{-- Payment modal --}}
 <div id="pos-pay-modal" class="pos-modal-backdrop fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4">
-    <div class="w-full max-w-lg rounded-3xl bg-[#111827] p-5 shadow-2xl ring-1 ring-white/10">
+    <div class="pos-dark max-h-[94dvh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-[#111827] p-5 shadow-2xl ring-1 ring-white/10">
         <div class="mb-4 flex items-center justify-between">
             <h3 class="text-lg font-bold">Paiement</h3>
             <button type="button" data-close-pay class="rounded-lg p-2 hover:bg-white/10">✕</button>
@@ -273,7 +286,7 @@
         <p id="pay-total" class="mb-5 text-4xl font-extrabold text-emerald-400">0,00</p>
 
         <div class="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
-            @foreach($paymentMethods as $mKey => $mLabel)
+            @foreach($gridMethods as $mKey => $mLabel)
                 <button type="button" data-method="{{ $mKey }}" class="pay-method rounded-2xl {{ $mKey === 'cash' ? 'bg-emerald-500 text-slate-950' : 'bg-white/5 ring-1 ring-white/10' }} px-2 py-3 text-xs font-bold sm:text-sm">{{ $mLabel }}</button>
             @endforeach
         </div>
@@ -302,14 +315,14 @@
 
         <div id="pay-mixed-block" class="mb-4 hidden space-y-2">
             <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Paiement mixte</p>
-            <div class="max-h-64 space-y-2 overflow-y-auto pr-1">
-                @foreach($paymentMethods as $mKey => $mLabel)
-                    <div class="grid grid-cols-12 items-center gap-2">
-                        <span class="col-span-4 text-[11px] text-slate-400">{{ $mLabel }}</span>
-                        <input data-mix="{{ $mKey }}" type="number" min="0" step="0.01" value="0" class="col-span-3 h-10 w-full rounded-xl bg-white/5 px-2 text-sm font-bold ring-1 ring-white/10">
+            <div class="space-y-2">
+                @foreach($gridMethods as $mKey => $mLabel)
+                    <div class="grid grid-cols-12 items-center gap-2 rounded-xl bg-white/[.03] p-2">
+                        <span class="col-span-12 text-sm font-semibold sm:col-span-3">{{ $mLabel }}</span>
+                        <input data-mix="{{ $mKey }}" type="number" min="0" step="0.01" value="0" aria-label="Montant {{ $mLabel }}" class="col-span-12 h-11 w-full rounded-xl px-3 text-base font-bold ring-1 ring-white/15 sm:col-span-3">
                         @if(in_array($mKey, $instrumentMethods, true))
-                            <input data-mix-ref="{{ $mKey }}" type="text" placeholder="N°" class="col-span-2 h-10 w-full rounded-xl bg-white/5 px-2 text-xs ring-1 ring-white/10">
-                            <input data-mix-due="{{ $mKey }}" type="date" class="col-span-3 h-10 w-full rounded-xl bg-white/5 px-1 text-xs ring-1 ring-white/10">
+                            <input data-mix-ref="{{ $mKey }}" type="text" placeholder="Numéro" class="col-span-6 h-11 w-full rounded-xl px-3 text-sm ring-1 ring-white/15 sm:col-span-3">
+                            <input data-mix-due="{{ $mKey }}" type="date" aria-label="Échéance" class="col-span-6 h-11 w-full rounded-xl px-2 text-sm ring-1 ring-white/15 sm:col-span-3">
                         @endif
                     </div>
                 @endforeach
@@ -444,7 +457,8 @@
                     <button type="button" data-dec="${i}" class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-lg font-bold">−</button>
                     <input data-qty="${i}" type="number" min="0.001" step="1" value="${l.qty}" class="h-10 w-16 rounded-xl bg-[#0b1220] text-center text-sm font-bold ring-1 ring-white/10">
                     <button type="button" data-inc="${i}" class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-lg font-bold">+</button>
-                    <input data-disc="${i}" type="number" min="0" max="100" step="1" value="${l.discount || 0}" title="Remise %" class="ml-auto h-10 w-16 rounded-xl bg-[#0b1220] text-center text-xs font-bold ring-1 ring-white/10" placeholder="%">
+                    <label class="ml-auto flex items-center gap-1 text-[11px] font-semibold text-slate-300">Remise
+                        <input data-disc="${i}" type="number" min="0" max="100" step="1" value="${l.discount || 0}" title="Remise sur la ligne (%)" class="h-10 w-16 rounded-xl bg-[#0b1220] text-center text-sm font-bold ring-1 ring-white/20" placeholder="%">%</label>
                     <span class="min-w-[4.5rem] text-right text-sm font-extrabold text-emerald-300">${money(lineTotal(l))}</span>
                 </div>
             </div>

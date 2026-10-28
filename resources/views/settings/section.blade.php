@@ -3,7 +3,7 @@
 @section('title', $title)
 @section('breadcrumb', 'Paramètres / '.$title)
 @section('heading', $title)
-@section('subtitle', 'Configurez les options de cette section.')
+@section('subtitle', ($subtitle ?? null) ?: 'Paramètres '.mb_strtolower($title).' de votre entreprise.')
 
 @section('content')
     <div class="flex flex-col gap-6 lg:flex-row">

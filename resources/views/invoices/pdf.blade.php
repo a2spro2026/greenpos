@@ -59,7 +59,7 @@
                 <div style="display:flex;gap:14px;align-items:flex-start">
                     <div class="logo">G</div>
                     <div class="brand">
-                        <h1>{{ $workspaceCompany->name ?? 'GreenPOS' }}</h1>
+                        <h1>{{ $workspaceCompany->name ?? config('app.name') }}</h1>
                         <p>{{ $invoice->store?->name }}<br>{{ $invoice->store?->city ?? 'Maroc' }}</p>
                     </div>
                 </div>
@@ -144,7 +144,7 @@
                 <div class="line">Signature & cachet</div>
             </div>
 
-            <p style="margin-top:32px;font-size:11px;color:#94a3b8;text-align:center">Document généré par GreenPOS · {{ now()->format('d/m/Y H:i') }}</p>
+            <p style="margin-top:32px;font-size:11px;color:#94a3b8;text-align:center">Document généré par {{ config('app.name') }} · {{ now()->format('d/m/Y H:i') }}</p>
         </div>
     </div>
     <script>window.addEventListener('load', () => { if (new URLSearchParams(location.search).get('auto') === '1') window.print(); });</script>

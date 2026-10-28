@@ -23,7 +23,7 @@
         <a href="{{ route('quotes.show', $quote) }}">Retour</a>
     </div>
     <h1>Devis {{ $quote->number }}</h1>
-    <p class="muted">{{ $workspaceCompany->name ?? 'GreenPOS' }} · {{ optional($quote->quoted_at)->format('d/m/Y') }} · {{ $quote->statusLabel() }}</p>
+    <p class="muted">{{ $workspaceCompany->name ?? config('app.name') }} · {{ optional($quote->quoted_at)->format('d/m/Y') }} · {{ $quote->statusLabel() }}</p>
     <p><strong>Client :</strong> {{ $quote->customer?->displayName() }}<br>
        <strong>Boutique :</strong> {{ $quote->store?->name }}<br>
        <strong>Validité :</strong> {{ optional($quote->valid_until)->format('d/m/Y') ?: '—' }}<br>

@@ -165,4 +165,33 @@ class RimalPosViewsTest extends RimalPosTest
         $this->assertStringContainsString('js/pos-offline.js?v=', $html);
         $this->assertLessThan(strpos($html, 'const Offline = window.GreenPosOffline'), strpos($html, 'js/pos-offline.js?v='));
     }
+
+    public function test_qa_fixes_treasury_terminal_order_advance_reports(): void
+    {
+        app(\App\Services\PosService::class)->completeSale([['product_id' => $this->product->id, 'quantity' => 1]], [['method' => 'cash', 'amount' => 120, 'tendered' => 120]]);
+        $this->get(route('accounting.cash.index'))->assertOk()->assertSee('Trésorerie (caisse &amp; banque)', false)->assertSee('120,00');
+
+        $html = $this->get(route('pos.terminal'))->assertOk()->getContent();
+        $this->assertStringNotContainsString('data-method="bank_transfer"', $html); $this->assertStringNotContainsString('data-mix="check"', $html);
+        $this->assertStringContainsString('pos-dark', $html);
+        $this->assertStringContainsString('Reste à répartir', $html);
+
+        $this->post(route('sales.store'), [
+            'store_id' => $this->store->id, 'customer_id' => $this->customer->id, 'confirm' => 1,
+            'lines' => [['product_id' => $this->product->id, 'quantity' => 2, 'unit_price' => 100, 'tax_rate' => 20]],
+            'advance_amount' => 50, 'advance_method' => 'cash',
+        ])->assertRedirect();
+        $order = \App\Models\Sale::query()->latest('id')->first();
+        $this->assertSame('reserved', $order->stock_state);
+        $this->assertEquals(50.0, (float) $order->fresh()->amount_paid);
+        $this->get(route('sales.show', $order))->assertOk()->assertSee('Sortie en cours')->assertSee('Bon de livraison');
+        $this->get(route('sales.index'))->assertOk()->assertSee('Tickets de caisse (POS)');
+
+        foreach (['sales', 'stock'] as $t) {
+            $x = $this->get(route('reports.export', ['type' => $t, 'format' => 'xls']))->assertOk();
+            $this->assertStringContainsString('<Workbook', $x->streamedContent());
+        }
+        $this->get(route('reports.sales'))->assertOk()->assertSee('Export Excel')->assertSee('Période');
+        $this->get(route('settings.section', 'pos'))->assertOk()->assertDontSee('Configurez les options de cette section.');
+    }
 }

@@ -1,9 +1,9 @@
 @extends('layouts.app')
 
-@section('title', 'Journal de caisse')
+@section('title', 'Trésorerie')
 @section('breadcrumb', 'Comptabilité')
-@section('heading', 'Journal de caisse')
-@section('subtitle', 'Entrées et sorties — solde courant.')
+@section('heading', 'Trésorerie (caisse & banque)')
+@section('subtitle', 'Encaissements du point de vente, mouvements de caisse et écritures comptables manuelles.')
 
 @section('actions')
     <div class="flex flex-wrap gap-2">
@@ -19,6 +19,22 @@
         <div class="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{{ session('success') }}</div>
     @endif
 
+    <section class="gp-card mb-4">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 class="text-sm font-bold">Point de vente — du {{ $pos['from']->format('d/m/Y') }} au {{ $pos['to']->format('d/m/Y') }}</h2>
+            @if(Route::has('pos.journal'))<a href="{{ route('pos.journal') }}" class="text-sm font-semibold text-gp-primary hover:underline">Journal de caisse détaillé →</a>@endif
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            @foreach($pos['inflows'] as $label => $amount)
+                <div class="rounded-xl bg-gp-surface/60 p-3 ring-1 ring-gp-border dark:ring-white/10"><p class="text-xs font-semibold uppercase text-gp-muted">{{ $label }}</p><p class="mt-1 text-lg font-bold text-emerald-700">{{ number_format($amount, 2, ',', ' ') }}</p></div>
+            @endforeach
+            <div class="rounded-xl p-3 ring-1 ring-gp-border dark:ring-white/10"><p class="text-xs font-semibold uppercase text-gp-muted">Entrées / sorties de caisse</p><p class="mt-1 text-lg font-bold">+{{ number_format($pos['cash_in'], 2, ',', ' ') }} / <span class="text-rose-700">−{{ number_format($pos['cash_out'], 2, ',', ' ') }}</span></p></div>
+            <div class="rounded-xl p-3 ring-1 ring-gp-border dark:ring-white/10"><p class="text-xs font-semibold uppercase text-gp-muted">Total encaissé POS (net)</p><p class="mt-1 text-lg font-bold">{{ number_format($pos['total'], 2, ',', ' ') }} {{ $currency }}</p></div>
+            <div class="rounded-xl p-3 ring-1 ring-gp-border dark:ring-white/10"><p class="text-xs font-semibold uppercase text-gp-muted">Chèques / effets / crédits à encaisser</p><p class="mt-1 text-lg font-bold text-amber-700">{{ number_format($pos['receivable'], 2, ',', ' ') }}</p></div>
+        </div>
+    </section>
+
+    <h2 class="mb-2 text-sm font-bold">Écritures comptables de caisse / banque</h2>
     <div class="mb-4 grid gap-3 sm:grid-cols-3">
         <div class="gp-card"><p class="text-xs font-semibold uppercase text-gp-muted">Entrées</p><p class="mt-1 text-xl font-bold text-emerald-700">{{ number_format($stats['in'], 2, ',', ' ') }}</p></div>
         <div class="gp-card"><p class="text-xs font-semibold uppercase text-gp-muted">Sorties</p><p class="mt-1 text-xl font-bold text-rose-700">{{ number_format($stats['out'], 2, ',', ' ') }}</p></div>

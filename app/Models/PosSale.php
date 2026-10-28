@@ -157,7 +157,17 @@ class PosSale extends Model
 
     public function statusLabel(): string
     {
+        if ($this->isEmptyHold()) {
+            return 'Suspendue (vide)';
+        }
+
         return self::STATUSES[$this->status] ?? $this->status;
+    }
+
+    /** Ancien ticket suspendu sans montant : conservé en base mais exclu de « Reprendre ». */
+    public function isEmptyHold(): bool
+    {
+        return $this->status === 'held' && (float) $this->total_ttc <= 0;
     }
 
     public function statusColor(): string

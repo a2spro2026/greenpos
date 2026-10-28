@@ -44,7 +44,20 @@ class CashJournalController extends Controller
         $in = (float) CashJournalEntry::query()->forCompany($company->id)->where('direction', 'in')->sum('amount');
         $out = (float) CashJournalEntry::query()->forCompany($company->id)->where('direction', 'out')->sum('amount');
 
+        // Rimal : la trésorerie intègre aussi les flux du point de vente (encaissements réels + mouvements de caisse).
+        $from = $request->filled('from') ? \Illuminate\Support\Carbon::parse($request->string('from'))->startOfDay() : now()->startOfMonth();
+        $to = $request->filled('to') ? \Illuminate\Support\Carbon::parse($request->string('to'))->endOfDay() : now()->endOfDay();
+        $storeId = $request->filled('store_id') ? $request->integer('store_id') : null;
+        $rimal = app(\App\Services\RimalReportService::class);
+        $posInflows = $rimal->inflowsByMethod($company->id, $from, $to, $storeId);
+        $mv = \App\Models\PosCashMovement::query()->where('company_id', $company->id)->whereBetween('created_at', [$from, $to])
+            ->when($storeId, fn ($q) => $q->where('store_id', $storeId));
+        $posCashIn = (float) (clone $mv)->where('direction', 'in')->sum('amount');
+        $posCashOut = (float) (clone $mv)->where('direction', 'out')->sum('amount');
+        $posTotal = round(array_sum($posInflows) + $posCashIn - $posCashOut, 2);
+
         return view('accounting.cash.index', [
+            'pos' => ['from' => $from, 'to' => $to, 'inflows' => $posInflows, 'cash_in' => $posCashIn, 'cash_out' => $posCashOut, 'total' => $posTotal, 'receivable' => $rimal->openReceivables($company->id, $storeId)],
             'entries' => $entries,
             'stores' => Store::query()->where('company_id', $company->id)->orderBy('name')->get(),
             'directions' => CashJournalEntry::DIRECTIONS,

@@ -19,7 +19,7 @@
         <a href="{{ route('customers.show', $customer) }}">Retour</a>
     </div>
     <h1>{{ $customer->displayName() }}</h1>
-    <p class="muted">{{ $customer->code }} · {{ $customer->typeLabel() }} · {{ $customer->statusLabel() }} · {{ $workspaceCompany->name ?? 'GreenPOS' }}</p>
+    <p class="muted">{{ $customer->code }} · {{ $customer->typeLabel() }} · {{ $customer->statusLabel() }} · {{ $workspaceCompany->name ?? config('app.name') }}</p>
     <div class="grid">
         <div><div class="label">Nom</div>{{ $customer->name }}</div>
         <div><div class="label">Société</div>{{ $customer->company_name ?: '—' }}</div>

@@ -111,7 +111,7 @@
             </section>
             <section class="ms-panel">
                 <h3 class="ms-panel-title">Version</h3>
-                <p class="ms-muted">v{{ $mod['version'] }} · Développeur GreenPOS</p>
+                <p class="ms-muted">v{{ $mod['version'] }} · Développeur {{ config('app.name') }}</p>
             </section>
         </aside>
     </div>

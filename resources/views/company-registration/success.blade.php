@@ -1,7 +1,7 @@
 @extends('layouts.site')
 
 @section('title', 'Demande envoyée')
-@section('meta_description', 'Votre demande d’inscription GreenPOS a été envoyée.')
+@section('meta_description', 'Votre demande d’inscription '.config('app.name').' a été envoyée.')
 
 @section('content')
 <section class="site-section">

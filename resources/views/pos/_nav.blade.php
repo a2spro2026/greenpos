@@ -1,9 +1,9 @@
 @php
     $items = [
-        ['route' => 'pos.dashboard', 'label' => 'Dashboard', 'match' => 'pos.dashboard'],
+        ['route' => 'pos.dashboard', 'label' => 'Tableau de bord', 'match' => 'pos.dashboard'],
         ['route' => 'pos.terminal', 'label' => 'Caisse', 'match' => 'pos.terminal'],
-        ['route' => 'pos.tickets.index', 'label' => 'Tickets', 'match' => 'pos.tickets.*'],
-        ['route' => 'pos.sessions.index', 'label' => 'Sessions', 'match' => 'pos.sessions.*'],
+        ['route' => 'pos.tickets.index', 'label' => 'Tickets enregistrés', 'match' => 'pos.tickets.*'],
+        ['route' => 'pos.sessions.index', 'label' => 'Ouvertures / clôtures', 'match' => 'pos.sessions.*'],
         ['route' => 'pos.journal', 'label' => 'Journal de caisse', 'match' => 'pos.journal*'],
         ['route' => 'pos.collections', 'label' => 'À encaisser', 'match' => 'pos.collections'],
         ['route' => 'pos.sync-conflicts.index', 'label' => 'Conflits synchro', 'match' => 'pos.sync-conflicts.*'],

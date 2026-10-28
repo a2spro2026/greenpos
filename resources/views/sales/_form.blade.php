@@ -117,11 +117,35 @@
         </div>
     </section>
 
+    @unless($isEdit)
+        <section class="gp-card mb-6">
+            <h2 class="mb-3 text-sm font-bold">Avance client (optionnel)</h2>
+            <div class="grid gap-3 sm:grid-cols-5">
+                <label class="block text-xs"><span class="gp-label">Montant de l'avance</span><input type="number" step="0.01" min="0" name="advance_amount" id="advance-amount" value="{{ old('advance_amount') }}" class="gp-input w-full"></label>
+                <label class="block text-xs"><span class="gp-label">Mode</span>
+                    <select name="advance_method" class="gp-select w-full">
+                        @foreach(\App\Models\SalePayment::METHODS as $k => $l)
+                            @continue(in_array($k, ['bank_transfer', 'check'], true))
+                            <option value="{{ $k }}" @selected(old('advance_method', 'cash') === $k)>{{ $l }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="block text-xs"><span class="gp-label">Numéro (chèque/effet)</span><input type="text" name="advance_reference" value="{{ old('advance_reference') }}" class="gp-input w-full"></label>
+                <label class="block text-xs"><span class="gp-label">Échéance</span><input type="date" name="advance_due_date" value="{{ old('advance_due_date') }}" class="gp-input w-full"></label>
+                <div class="rounded-xl bg-gp-surface/60 p-3 text-sm ring-1 ring-gp-border dark:ring-white/10">
+                    <p class="text-xs text-gp-muted">Solde à la livraison</p>
+                    <p class="text-lg font-bold" id="advance-balance">0,00</p>
+                </div>
+            </div>
+            <p class="mt-2 text-xs text-gp-muted">À la confirmation, le stock passe en « Sortie en cours » (réservé) jusqu'à la livraison complète.</p>
+        </section>
+    @endunless
+
     <div class="flex flex-wrap justify-end gap-3">
         <a href="{{ $isEdit ? route('sales.show', $sale) : route('sales.index') }}" class="gp-btn-secondary">Annuler</a>
         <button type="submit" class="gp-btn-primary">{{ $isEdit ? 'Enregistrer' : 'Brouillon' }}</button>
         @unless($isEdit)
-            <button type="submit" name="confirm" value="1" class="gp-btn-primary !bg-emerald-600 !hover:bg-emerald-700">Confirmer et décrémenter stock</button>
+            <button type="submit" name="confirm" value="1" class="gp-btn-primary !bg-emerald-600 !hover:bg-emerald-700">Confirmer la commande (stock réservé)</button>
         @endunless
     </div>
 </form>
@@ -204,4 +228,18 @@
 
     document.getElementById('add-line').addEventListener('click', () => addLine());
     if (existingLines.length) { existingLines.forEach(l => addLine(l)); } else { addLine(); }
+</script>
+<script>
+    (function () {
+        const amt = document.getElementById('advance-amount');
+        const out = document.getElementById('advance-balance');
+        const ttc = document.getElementById('total-ttc');
+        if (!amt || !out || !ttc) return;
+        const parse = (t) => Number(String(t).replace(/\s/g, '').replace(',', '.')) || 0;
+        const fmt = (n) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const upd = () => { out.textContent = fmt(Math.max(0, parse(ttc.textContent) - (Number(amt.value) || 0))); };
+        amt.addEventListener('input', upd);
+        new MutationObserver(upd).observe(ttc, { childList: true, characterData: true, subtree: true });
+        upd();
+    })();
 </script>

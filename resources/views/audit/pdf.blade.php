@@ -16,7 +16,7 @@
 <body onload="window.print()">
     <button onclick="window.print()">Imprimer / Enregistrer PDF</button>
     <h1>Export PDF — Journal d'audit</h1>
-    <p class="meta">GreenPOS · Généré le {{ now()->format('d/m/Y à H:i') }} · {{ $events->count() }} lignes</p>
+    <p class="meta">{{ config('app.name') }} · Généré le {{ now()->format('d/m/Y à H:i') }} · {{ $events->count() }} lignes</p>
     <table>
         <thead>
             <tr>

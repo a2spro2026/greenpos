@@ -19,7 +19,7 @@
         <a href="{{ route('suppliers.show', $supplier) }}">Retour</a>
     </div>
     <h1>{{ $supplier->name }}</h1>
-    <p class="muted">{{ $supplier->code }} · {{ $supplier->statusLabel() }} · {{ $workspaceCompany->name ?? 'GreenPOS' }}</p>
+    <p class="muted">{{ $supplier->code }} · {{ $supplier->statusLabel() }} · {{ $workspaceCompany->name ?? config('app.name') }}</p>
     <div class="grid">
         <div><div class="label">Société</div>{{ $supplier->company_name ?: '—' }}</div>
         <div><div class="label">Catégorie</div>{{ $supplier->categoryLabel() }}</div>

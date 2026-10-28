@@ -4,7 +4,7 @@
 <section class="ob-form-shell">
     <div class="ob-form-card">
         <p class="ob-eyebrow">Étape 1 / 3</p>
-        <h1>Créer votre espace GreenPOS</h1>
+        <h1>Créer votre espace {{ config('app.name') }}</h1>
         <p class="ob-lead-sm">Quelques informations pour démarrer. Vous choisirez votre plan ensuite.</p>
 
         @if($errors->any())

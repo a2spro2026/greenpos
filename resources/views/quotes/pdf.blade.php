@@ -54,7 +54,7 @@
                 <div style="display:flex;gap:14px;align-items:flex-start">
                     <div class="logo">G</div>
                     <div class="brand">
-                        <h1>{{ $workspaceCompany->name ?? 'GreenPOS' }}</h1>
+                        <h1>{{ $workspaceCompany->name ?? config('app.name') }}</h1>
                         <p>{{ $quote->store?->name }}<br>{{ $quote->store?->city ?? 'Maroc' }}</p>
                     </div>
                 </div>
@@ -119,7 +119,7 @@
             </div>
             @if($quote->customer_notes)<p style="margin-top:20px;font-size:12px;color:#64748b"><strong>Note :</strong> {{ $quote->customer_notes }}</p>@endif
             <div class="signature"><div class="line">Bon pour accord — Signature client</div></div>
-            <p style="margin-top:32px;font-size:11px;color:#94a3b8;text-align:center">Devis généré par GreenPOS · {{ now()->format('d/m/Y H:i') }}</p>
+            <p style="margin-top:32px;font-size:11px;color:#94a3b8;text-align:center">Devis généré par {{ config('app.name') }} · {{ now()->format('d/m/Y H:i') }}</p>
         </div>
     </div>
 </body>

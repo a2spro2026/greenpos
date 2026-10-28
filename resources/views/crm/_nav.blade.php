@@ -1,6 +1,6 @@
 <nav class="mb-6 flex flex-wrap gap-2">
     @foreach([
-        ['route' => 'crm.dashboard', 'label' => 'Dashboard'],
+        ['route' => 'crm.dashboard', 'label' => 'Tableau de bord'],
         ['route' => 'crm.pipeline', 'label' => 'Pipeline'],
         ['route' => 'crm.leads.index', 'label' => 'Leads'],
         ['route' => 'crm.opportunities.index', 'label' => 'Opportunités'],

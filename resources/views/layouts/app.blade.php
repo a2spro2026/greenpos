@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Dashboard') — {{ ($workspaceBranding['trade_name'] ?? null) ?: 'GreenPOS' }}</title>
+    <title>@yield('title', 'Tableau de bord') — {{ ($workspaceBranding['trade_name'] ?? null) ?: config('app.name') }}</title>
     <meta name="theme-color" content="#0d9488">
     <link rel="manifest" href="/manifest.webmanifest">
     @if(!empty($workspaceBrandingFavicon))
@@ -50,7 +50,7 @@
             <span>Console Super Admin · ERP de <strong>{{ session('admin_impersonating_company_name') }}</strong></span>
             <form method="POST" action="{{ route('admin.leave-impersonation') }}">
                 @csrf
-                <button type="submit" style="border-radius:.5rem;background:#fff;color:#14532d;padding:.35rem .85rem;font-weight:700;">Retour à la Console GreenPOS</button>
+                <button type="submit" style="border-radius:.5rem;background:#fff;color:#14532d;padding:.35rem .85rem;font-weight:700;">Retour à la Console {{ config('app.name') }}</button>
             </form>
         </div>
     @endif
@@ -77,7 +77,7 @@
                 <a href="{{ route('home') }}" class="gp-sidebar-brand flex min-w-0 items-center gap-3 rounded-xl px-1 py-1 transition">
                     <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-400 to-emerald-700 text-sm font-extrabold text-white shadow-lg shadow-teal-900/40">G</span>
                     <span class="gp-brand-text min-w-0">
-                        <span class="gp-sidebar-heading block truncate text-sm font-bold tracking-tight">GreenPOS</span>
+                        <span class="gp-sidebar-heading block truncate text-sm font-bold tracking-tight">{{ config('app.name') }}</span>
                         <span class="block truncate text-[11px] text-gp-sidebar-text">Enterprise</span>
                     </span>
                 </a>
@@ -115,9 +115,9 @@
                         <span>Tableau de bord</span>
                         <span role="button" tabindex="0" class="gp-fav-star" data-fav-toggle aria-label="Ajouter aux favoris"><svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></span>
                     </a>
-                    <a href="{{ route('ai.dashboard') }}" class="gp-nav-link {{ request()->routeIs('ai.*') ? 'gp-nav-link-active' : '' }}" data-nav-item data-nav-label="GreenPOS AI" data-nav-href="{{ route('ai.dashboard') }}">
+                    <a href="{{ route('ai.dashboard') }}" class="gp-nav-link {{ request()->routeIs('ai.*') ? 'gp-nav-link-active' : '' }}" data-nav-item data-nav-label="Assistant IA" data-nav-href="{{ route('ai.dashboard') }}">
                         <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 15.5l.6 1.7 1.7.6-1.7.6-.6 1.7-.6-1.7-1.7-.6 1.7-.6.6-1.7z"/></svg>
-                        <span>GreenPOS AI</span>
+                        <span>Assistant IA</span>
                         <span role="button" tabindex="0" class="gp-fav-star" data-fav-toggle aria-label="Ajouter aux favoris"><svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></span>
                     </a>
                     @can('reports.view')
@@ -580,7 +580,7 @@
 
             <main class="gp-page">
                 <div class="gp-page-header">
-                    <p class="gp-page-eyebrow">@yield('breadcrumb', 'GreenPOS')</p>
+                    <p class="gp-page-eyebrow">@yield('breadcrumb', config('app.name'))</p>
                     <div class="mt-1 flex flex-wrap items-end justify-between gap-3">
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
@@ -644,7 +644,7 @@
         <div class="gp-help-backdrop"></div>
         <aside class="gp-help-drawer">
             <div class="flex items-center justify-between border-b border-gp-border px-5 py-4">
-                <h2 class="text-sm font-bold text-gp-text">Aide GreenPOS</h2>
+                <h2 class="text-sm font-bold text-gp-text">Aide {{ config('app.name') }}</h2>
                 <button type="button" class="gp-icon-btn" data-gp-close="gp-help" aria-label="Fermer">×</button>
             </div>
             <div class="space-y-4 overflow-y-auto p-5 text-sm">

@@ -1,3 +1,4 @@
+@include('reports._period')
 <form method="get" class="gp-card mb-4 grid gap-3 sm:grid-cols-5">
     <label class="block text-xs"><span class="gp-label">Du</span><input type="date" name="from" value="{{ $filters['from']->toDateString() }}" class="gp-input"></label>
     <label class="block text-xs"><span class="gp-label">Au</span><input type="date" name="to" value="{{ $filters['to']->toDateString() }}" class="gp-input"></label>

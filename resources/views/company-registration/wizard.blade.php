@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Inscrire mon entreprise — GreenPOS</title>
+    <title>Inscrire mon entreprise — {{ config('app.name') }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -129,7 +129,7 @@
             <a href="{{ route('site.home') }}" style="display:flex;align-items:center;gap:.75rem;color:inherit;text-decoration:none">
                 <span class="reg-mark">GP</span>
                 <div>
-                    <strong>GreenPOS</strong>
+                    <strong>{{ config('app.name') }}</strong>
                     <span>Inscription entreprise</span>
                 </div>
             </a>
@@ -158,7 +158,7 @@
             <div class="reg-panel active" data-panel="1">
                 <p class="reg-meta">Étape 1 / 5</p>
                 <h1>Informations du responsable</h1>
-                <p class="lead">Le compte administrateur de votre espace GreenPOS.</p>
+                <p class="lead">Le compte administrateur de votre espace {{ config('app.name') }}.</p>
                 <div class="reg-grid reg-grid-2">
                     <div class="sm:col-span-2">
                         <label class="reg-label">Nom complet</label>

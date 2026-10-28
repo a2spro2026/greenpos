@@ -40,9 +40,9 @@
         <p class="muted" style="font-weight:700;letter-spacing:.08em">{{ $header }}</p>
     @endif
     @if(! $isKitchen && ! empty($ticket['show_logo']))
-        <h1>{{ $sale->store?->name ?? $sale->company?->name ?? 'GreenPOS' }}</h1>
+        <h1>{{ $sale->store?->name ?? $sale->company?->name ?? config('app.name') }}</h1>
     @else
-        <h1>{{ $isKitchen ? ($header ?: 'CUISINE') : ($sale->store?->name ?? 'GreenPOS') }}</h1>
+        <h1>{{ $isKitchen ? ($header ?: 'CUISINE') : ($sale->store?->name ?? config('app.name')) }}</h1>
     @endif
     <p class="muted">{{ $sale->number }} · {{ optional($sale->completed_at)->format('d/m/Y H:i') }}</p>
     @if($sale->ticket_name)

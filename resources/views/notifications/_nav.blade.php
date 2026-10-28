@@ -1,6 +1,6 @@
 @php
     $items = [
-        ['route' => 'notifications.dashboard', 'label' => 'Dashboard', 'match' => 'notifications.dashboard'],
+        ['route' => 'notifications.dashboard', 'label' => 'Tableau de bord', 'match' => 'notifications.dashboard'],
         ['route' => 'notifications.index', 'label' => 'Toutes', 'match' => 'notifications.index'],
         ['route' => 'notifications.preferences', 'label' => 'Préférences', 'match' => 'notifications.preferences', 'can' => 'notifications.preferences'],
     ];

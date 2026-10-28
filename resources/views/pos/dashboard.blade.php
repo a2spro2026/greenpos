@@ -3,7 +3,7 @@
 @section('title', 'POS')
 @section('breadcrumb', 'Ventes / POS')
 @section('heading', 'Dashboard POS')
-@section('subtitle', 'Pilotage des ventes caisse du jour.')
+@section('subtitle', 'Ventes caisse d’aujourd’hui ('.now()->format('d/m/Y').'). Pour une autre période, voir Rapports.')
 
 @section('actions')
     <div class="flex flex-wrap gap-2">

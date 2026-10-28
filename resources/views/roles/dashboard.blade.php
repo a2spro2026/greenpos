@@ -3,7 +3,7 @@
 @section('title', 'Rôles & Permissions')
 @section('breadcrumb', 'Administration / Rôles')
 @section('heading', 'Dashboard RBAC')
-@section('subtitle', 'Contrôle d\'accès basé sur les rôles — pilotage des permissions GreenPOS.')
+@section('subtitle', 'Contrôle d\'accès basé sur les rôles — pilotage des permissions '.config('app.name').'.')
 
 @section('actions')
     <div class="flex flex-wrap gap-2">

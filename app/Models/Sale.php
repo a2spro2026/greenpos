@@ -113,7 +113,7 @@ class Sale extends Model
         return match ($this->stock_state) {
             'reserved' => 'Sortie en cours',
             'out' => 'Sorti (livré)',
-            default => null,
+            default => $this->status === 'draft' ? 'Non réservé (brouillon)' : null,
         };
     }
 

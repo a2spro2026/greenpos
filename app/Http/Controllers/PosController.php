@@ -103,20 +103,25 @@ class PosController extends Controller
 
         $categories = Category::query()->where('company_id', $company->id)->orderBy('name')->get();
         $customers = Customer::query()->forCompany($company->id)->where('status', 'active')->orderBy('name')->limit(100)->get(['id', 'name', 'company_name', 'code']);
-        $favorites = Product::query()
-            ->forCompany($company->id)
-            ->where('status', 'active')
-            ->when(
-                \Illuminate\Support\Facades\Schema::hasColumn('products', 'is_favorite'),
-                fn ($q) => $q->orderByDesc('is_favorite')->orderByDesc('updated_at'),
-                fn ($q) => $q->orderByDesc('updated_at')
-            )
-            ->limit(8)
-            ->get(['id', 'name', 'sale_price', 'sku', 'tax_rate']);
+        // Favoris (is_favorite) puis produits les plus vendus récemment — sans doublon ;
+        // masqué quand le catalogue est si petit que la barre répéterait la grille.
+        $hasFav = \Illuminate\Support\Facades\Schema::hasColumn('products', 'is_favorite');
+        $favIds = $hasFav ? Product::query()->forCompany($company->id)->where('status', 'active')->where('is_favorite', true)->limit(8)->pluck('id') : collect();
+        $recentIds = \App\Models\PosSaleLine::query()
+            ->whereHas('sale', fn ($q) => $q->where('company_id', $company->id)->where('status', 'completed')->where('completed_at', '>=', now()->subDays(30)))
+            ->whereNotNull('product_id')
+            ->selectRaw('product_id, SUM(quantity) as q')->groupBy('product_id')->orderByDesc('q')->limit(8)->pluck('product_id');
+        $ids = $favIds->merge($recentIds)->unique()->take(8)->values();
+        $activeCount = Product::query()->forCompany($company->id)->where('status', 'active')->count();
+        $favorites = $activeCount <= 12 || $ids->isEmpty()
+            ? collect()
+            : Product::query()->forCompany($company->id)->where('status', 'active')->whereIn('id', $ids)->get(['id', 'name', 'sale_price', 'sku', 'tax_rate'])
+                ->sortBy(fn ($p) => $ids->search($p->id))->values();
 
         $held = PosSale::query()
             ->forCompany($company->id)
             ->where('status', 'held')
+            ->where('total_ttc', '>', 0)
             ->where('store_id', Workspace::store()?->id)
             ->latest('held_at')
             ->limit(10)

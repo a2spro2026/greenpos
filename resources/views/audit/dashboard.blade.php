@@ -3,7 +3,7 @@
 @section('title', 'Journal d\'audit')
 @section('breadcrumb', 'Administration / Audit')
 @section('heading', 'Journal d\'audit')
-@section('subtitle', 'Traçabilité, conformité et transparence des activités GreenPOS.')
+@section('subtitle', 'Traçabilité, conformité et transparence des activités '.config('app.name').'.')
 
 @section('actions')
     <div class="flex flex-wrap gap-2">

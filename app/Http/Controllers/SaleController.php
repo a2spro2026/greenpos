@@ -141,11 +141,34 @@ class SaleController extends Controller
     {
         $this->authorize('sales.create');
         $data = $this->validatedSale($request);
-        $sale = $this->sales->create($data, $request->input('lines', []));
+        $advance = $request->validate([
+            'advance_amount' => ['nullable', 'numeric', 'min:0'],
+            'advance_method' => ['nullable', 'string', 'max:64'],
+            'advance_reference' => ['nullable', 'string', 'max:120', 'required_if:advance_method,cheque,effet'],
+            'advance_due_date' => ['nullable', 'date', 'required_if:advance_method,cheque,effet'],
+        ]);
+        $sale = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $request, $advance) {
+            $sale = $this->sales->create($data, $request->input('lines', []));
+            if ($request->boolean('confirm')) {
+                $this->sales->confirm($sale);
+            }
+            $amount = (float) ($advance['advance_amount'] ?? 0);
+            if ($amount > 0) {
+                if ($amount - (float) $sale->fresh()->total_ttc > 0.009) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['advance_amount' => "L'avance dépasse le total de la commande."]);
+                }
+                $this->sales->recordPayment($sale->fresh(), [
+                    'method' => $advance['advance_method'] ?? 'cash',
+                    'amount' => $amount,
+                    'paid_at' => now()->toDateString(),
+                    'reference' => $advance['advance_reference'] ?? null,
+                    'due_date' => $advance['advance_due_date'] ?? null,
+                    'notes' => 'Avance à la commande',
+                ]);
+            }
 
-        if ($request->boolean('confirm')) {
-            $this->sales->confirm($sale);
-        }
+            return $sale;
+        });
 
         return redirect()->route('sales.show', $sale)->with('success', $request->boolean('confirm') ? 'Vente confirmée.' : 'Brouillon enregistré.');
     }
