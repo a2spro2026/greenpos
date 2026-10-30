@@ -21,7 +21,11 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         .pos-grid { display: grid; grid-template-columns: 1fr; min-height: 100dvh; }
-        @media (min-width: 1024px) { .pos-grid { grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.85fr); } }
+        /* Tablette (>=768px) : produits à gauche, ticket à droite, comme sur ordinateur */
+        @media (min-width: 768px) { .pos-grid { grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); } }
+        @media (min-width: 1024px) { .pos-grid { grid-template-columns: minmax(0, 2fr) minmax(340px, 1fr); } }
+        #pos-product-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+        @media (min-width: 768px) and (max-width: 1279px) { #pos-product-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); } }
         .pos-product { transition: transform .12s ease, box-shadow .12s ease; }
         .pos-product:active { transform: scale(.97); }
         .pos-toast { animation: pos-in .2s ease; }
@@ -75,7 +79,7 @@
      data-sync-url="{{ route('pos.offline.sync') }}">
 
     {{-- LEFT: catalog --}}
-    <section class="flex min-h-0 flex-col border-b border-slate-200 dark:border-white/10 lg:border-b-0 lg:border-r">
+    <section class="flex min-h-0 flex-col border-b border-slate-200 dark:border-white/10 md:border-b-0 md:border-r">
         <header class="pos-chrome flex flex-wrap items-center gap-3 border-b px-4 py-3">
             <a href="{{ route('pos.dashboard') }}" class="inline-flex h-10 items-center gap-2 rounded-xl bg-slate-100 px-3 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200 dark:bg-white/5 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-white/10">
                 ← POS
@@ -135,12 +139,12 @@
 
         <div class="flex min-h-0 flex-1 {{ $catLeft ? 'flex-row' : 'flex-col' }}">
             @if($catLeft)
-                <nav id="pos-categories" class="flex w-40 shrink-0 flex-col gap-2 overflow-y-auto border-r border-slate-200 p-3 dark:border-white/10" data-position="left">
+                <nav id="pos-categories" class="flex w-32 shrink-0 lg:w-40 flex-col gap-2 overflow-y-auto border-r border-slate-200 p-3 dark:border-white/10" data-position="left">
                     @include('pos.partials.categories', ['categories' => $categories])
                 </nav>
             @endif
             <div id="pos-products" class="min-h-0 flex-1 overflow-y-auto p-4">
-                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5" id="pos-product-grid"></div>
+                <div class="grid gap-3" id="pos-product-grid"></div>
                 <p id="pos-empty" class="hidden py-16 text-center text-sm text-slate-500">Aucun produit trouvé.</p>
             </div>
             @unless($catLeft)
@@ -152,7 +156,7 @@
     </section>
 
     {{-- RIGHT: cart --}}
-    <aside class="pos-dark flex min-h-[50dvh] flex-col bg-[#111827] lg:min-h-0">
+    <aside class="pos-dark flex min-h-[50dvh] flex-col bg-[#111827] md:min-h-0">
         <div class="border-b border-white/10 px-4 py-3">
             <div class="flex items-center justify-between gap-2">
                 <h2 class="text-sm font-bold">Panier</h2>
@@ -240,11 +244,11 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 border-t border-white/10 p-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+        <div class="grid grid-cols-2 gap-2 border-t border-white/10 p-3 sm:grid-cols-4 md:grid-cols-2 xl:grid-cols-4">
             <button type="button" id="pos-clear" class="rounded-xl bg-white/5 py-3 text-sm font-bold ring-1 ring-white/10 hover:bg-rose-500/20">Vider</button>
             <button type="button" id="pos-hold" class="rounded-xl bg-amber-500/20 py-3 text-sm font-bold text-amber-200 ring-1 ring-amber-500/30 hover:bg-amber-500/30 {{ $canHold ? '' : 'opacity-40' }}" {{ $canHold ? '' : 'disabled' }}>Enregistrer</button>
             <button type="button" id="pos-resume-btn" class="rounded-xl bg-sky-500/20 py-3 text-sm font-bold text-sky-200 ring-1 ring-sky-500/30 hover:bg-sky-500/30">Reprendre</button>
-            <button type="button" id="pos-pay" class="rounded-xl bg-emerald-500 py-3 text-sm font-extrabold text-slate-950 hover:bg-emerald-400 sm:col-span-1 lg:col-span-2 xl:col-span-1">Payer (F4)</button>
+            <button type="button" id="pos-pay" class="rounded-xl bg-emerald-500 py-3 text-sm font-extrabold text-slate-950 hover:bg-emerald-400 sm:col-span-1 md:col-span-2 xl:col-span-1">Payer (F4)</button>
         </div>
     </aside>
 </div>
